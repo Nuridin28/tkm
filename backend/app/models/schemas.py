@@ -161,6 +161,7 @@ class RoutingErrorStats(BaseModel):
     error_rate: float
     by_error_type: Dict[str, int]
     by_department: Dict[str, int]
+    by_category: Optional[Dict[str, int]] = {}
 
 
 class MonitoringMetrics(BaseModel):
@@ -216,11 +217,23 @@ class PublicChatRequest(BaseModel):
     contact_info: Optional[Dict[str, str]] = None  # {"phone": "...", "email": "..."}
 
 
+class SourceInfo(BaseModel):
+    content: str
+    page: Optional[int] = None
+    source_type: Optional[str] = None
+    similarity: Optional[float] = None
+
+
 class PublicChatResponse(BaseModel):
     response: str
-    can_answer: bool  # Может ли ИИ ответить на вопрос
-    needs_clarification: bool  # Нужны ли уточнения
-    should_create_ticket: bool  # Нужно ли создать тикет
+    answer: Optional[str] = None  # Основной ответ (для совместимости с call_helper)
+    can_answer: bool = True  # Может ли ИИ ответить на вопрос
+    needs_clarification: bool = False  # Нужны ли уточнения
+    should_create_ticket: bool = False  # Нужно ли создать тикет
     ticket_draft: Optional[Dict[str, Any]] = None  # Драфт тикета если нужен
     conversation_history: List[PublicChatMessage] = []
+    sources: Optional[List[SourceInfo]] = []  # Источники из RAG
+    confidence: Optional[float] = None  # Уверенность в ответе
+    ticketCreated: Optional[bool] = False  # Создан ли тикет
+    requiresClientType: Optional[bool] = False  # Требуется ли определение типа клиента
 

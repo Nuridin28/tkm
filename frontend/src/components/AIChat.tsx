@@ -4,10 +4,134 @@ import { Phone, Mail, CheckCircle } from 'lucide-react'
 import { sendChatMessage, createTicketFromChat } from '../services/api'
 import '../styles/AIChat.css'
 
+// Простая функция для форматирования Markdown в HTML
+function formatMarkdown(text: string): string {
+  if (!text) return ''
+  
+  // Удаляем технические метаданные
+  text = text.replace(/CONFIDENCE:\s*[\d.]+\s*/gi, '')
+  text = text.replace(/NEEDS_TICKET:\s*(true|false)\s*/gi, '')
+  text = text.replace(/REASON:\s*[^\n]*/gi, '')
+  text = text.trim()
+  
+  // Разбиваем на строки
+  const lines = text.split('\n')
+  const result: string[] = []
+  let inOrderedList = false
+  let inUnorderedList = false
+  let inParagraph = false
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim()
+    
+    // Пропускаем пустые строки
+    if (!line) {
+      if (inOrderedList) {
+        result.push('</ol>')
+        inOrderedList = false
+      }
+      if (inUnorderedList) {
+        result.push('</ul>')
+        inUnorderedList = false
+      }
+      if (inParagraph) {
+        result.push('</p>')
+        inParagraph = false
+      }
+      continue
+    }
+    
+    // Заголовки
+    if (line.startsWith('## ')) {
+      if (inParagraph) result.push('</p>')
+      if (inOrderedList) { result.push('</ol>'); inOrderedList = false }
+      if (inUnorderedList) { result.push('</ul>'); inUnorderedList = false }
+      result.push(`<h2>${line.substring(3)}</h2>`)
+      inParagraph = false
+      continue
+    }
+    if (line.startsWith('### ')) {
+      if (inParagraph) result.push('</p>')
+      if (inOrderedList) { result.push('</ol>'); inOrderedList = false }
+      if (inUnorderedList) { result.push('</ul>'); inUnorderedList = false }
+      result.push(`<h3>${line.substring(4)}</h3>`)
+      inParagraph = false
+      continue
+    }
+    
+    // Нумерованные списки
+    const numberedMatch = line.match(/^(\d+)\.\s+(.+)$/)
+    if (numberedMatch) {
+      if (inParagraph) { result.push('</p>'); inParagraph = false }
+      if (inUnorderedList) { result.push('</ul>'); inUnorderedList = false }
+      if (!inOrderedList) {
+        result.push('<ol>')
+        inOrderedList = true
+      }
+      let content = numberedMatch[2]
+      // Обрабатываем форматирование внутри списка
+      content = content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      content = content.replace(/\*(.+?)\*/g, '<em>$1</em>')
+      content = content.replace(/`(.+?)`/g, '<code>$1</code>')
+      result.push(`<li>${content}</li>`)
+      continue
+    }
+    
+    // Маркированные списки
+    const bulletMatch = line.match(/^[-*]\s+(.+)$/)
+    if (bulletMatch) {
+      if (inParagraph) { result.push('</p>'); inParagraph = false }
+      if (inOrderedList) { result.push('</ol>'); inOrderedList = false }
+      if (!inUnorderedList) {
+        result.push('<ul>')
+        inUnorderedList = true
+      }
+      let content = bulletMatch[1]
+      // Обрабатываем форматирование внутри списка
+      content = content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      content = content.replace(/\*(.+?)\*/g, '<em>$1</em>')
+      content = content.replace(/`(.+?)`/g, '<code>$1</code>')
+      result.push(`<li>${content}</li>`)
+      continue
+    }
+    
+    // Обычный текст
+    if (inOrderedList) { result.push('</ol>'); inOrderedList = false }
+    if (inUnorderedList) { result.push('</ul>'); inUnorderedList = false }
+    
+    if (!inParagraph) {
+      result.push('<p>')
+      inParagraph = true
+    } else {
+      result.push('<br>')
+    }
+    
+    // Обрабатываем форматирование
+    let content = line
+    content = content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    content = content.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
+    content = content.replace(/`(.+?)`/g, '<code>$1</code>')
+    result.push(content)
+  }
+  
+  // Закрываем открытые теги
+  if (inParagraph) result.push('</p>')
+  if (inOrderedList) result.push('</ol>')
+  if (inUnorderedList) result.push('</ul>')
+  
+  return result.join('')
+}
+
 interface Message {
   role: 'user' | 'assistant'
   content: string
   timestamp?: string
+  sources?: Array<{
+    content: string
+    page?: number
+    source_type?: string
+    similarity?: number
+  }>
 }
 
 interface AIChatProps {
@@ -98,15 +222,24 @@ export default function AIChat({ contactInfo }: AIChatProps) {
         contact_info: contactInfo
       })
 
+      // Используем answer если есть, иначе response
+      const answerText = response.answer || response.response || ''
+
       const assistantMessage: Message = {
         role: 'assistant',
-        content: response.response,
-        timestamp: new Date().toISOString()
+        content: answerText,
+        timestamp: new Date().toISOString(),
+        sources: response.sources || []
       }
 
       setMessages(prev => [...prev, assistantMessage])
 
-      // Если нужно создать тикет
+      // Если тикет уже создан (ticketCreated из ответа)
+      if (response.ticketCreated && !ticketCreated) {
+        setTicketCreated(true)
+      }
+
+      // Если нужно создать тикет (старый формат для совместимости)
       if (response.should_create_ticket && response.ticket_draft && !ticketCreated) {
         try {
           // Добавляем всю историю чата в драфт тикета
@@ -173,9 +306,29 @@ export default function AIChat({ contactInfo }: AIChatProps) {
             key={index}
             className={`message ${message.role === 'user' ? 'user-message' : 'assistant-message'}`}
           >
-            <div className="message-content">
-              {message.content}
-            </div>
+            <div 
+              className="message-content"
+              dangerouslySetInnerHTML={{
+                __html: formatMarkdown(message.content)
+              }}
+            />
+            {message.sources && message.sources.length > 0 && (
+              <div className="message-sources">
+                <div className="sources-label">Источники:</div>
+                <div className="sources-list">
+                  {message.sources.slice(0, 3).map((source, sIdx) => (
+                    <div key={sIdx} className="source-item">
+                      {source.page && <span>Страница {source.page}</span>}
+                      {source.similarity && (
+                        <span className="similarity">
+                          Релевантность: {(source.similarity * 100).toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {message.timestamp && (
               <div className="message-time">
                 {new Date(message.timestamp).toLocaleTimeString('ru-RU', {
@@ -209,7 +362,7 @@ export default function AIChat({ contactInfo }: AIChatProps) {
           type="submit"
           disabled={loading || !inputMessage.trim() || ticketCreated}
           className="send-button"
-          style={{ color: 'white', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+          style={{ color: 'white', background: 'linear-gradient(135deg, #0066CC 0%, #00A651 100%)' }}
         >
           {t('support.send')}
         </button>

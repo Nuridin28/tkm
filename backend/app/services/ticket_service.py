@@ -20,16 +20,37 @@ class TicketService:
     async def create_ticket(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new ticket"""
         ticket_id = str(uuid.uuid4())
+        incoming_meta = data.get("incoming_meta", {})
+        
+        # Извлекаем данные из incoming_meta если они есть
+        priority = incoming_meta.get("priority", TicketPriority.MEDIUM.value)
+        category = incoming_meta.get("category")
+        subcategory = incoming_meta.get("subcategory")
+        language = incoming_meta.get("language")
+        summary = incoming_meta.get("summary")
+        department_name = incoming_meta.get("department")
+        
+        # Получаем department_id по имени если указан
+        department_id = None
+        if department_name:
+            dept_result = self.supabase_admin.table("departments").select("id").eq("name", department_name).execute()
+            if dept_result.data:
+                department_id = dept_result.data[0]["id"]
         
         ticket_data = {
             "id": ticket_id,
             "client_id": data.get("client_id"),
             "source": data["source"],
-            "source_meta": data.get("incoming_meta", {}),
+            "source_meta": incoming_meta,
             "subject": data["subject"],
             "description": data["text"],
             "status": TicketStatus.NEW.value,
-            "priority": TicketPriority.MEDIUM.value,
+            "priority": priority,
+            "category": category,
+            "subcategory": subcategory,
+            "language": language,
+            "summary": summary,
+            "department_id": department_id,
             "auto_assigned": False,
             "auto_resolved": False,
             "need_on_site": False,
@@ -37,12 +58,23 @@ class TicketService:
             "updated_at": datetime.utcnow().isoformat()
         }
         
-        # Insert ticket
-        result = self.supabase_admin.table("tickets").insert(ticket_data).execute()
+        print(f"[TICKET_SERVICE] Creating ticket with data: {ticket_data}")
         
-        if result.data:
-            return result.data[0]
-        raise Exception("Failed to create ticket")
+        # Insert ticket
+        try:
+            result = self.supabase_admin.table("tickets").insert(ticket_data).execute()
+            
+            if result.data:
+                print(f"[TICKET_SERVICE] Ticket created successfully: {result.data[0].get('id')}")
+                return result.data[0]
+            else:
+                print(f"[TICKET_SERVICE] No data returned from insert")
+                raise Exception("Failed to create ticket: no data returned")
+        except Exception as e:
+            print(f"[TICKET_SERVICE] Error creating ticket: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
     
     async def process_with_ai(self, ticket_id: str) -> Dict[str, Any]:
         """Process ticket with AI: classify, route, generate answer"""
@@ -221,6 +253,7 @@ class TicketService:
     async def list_tickets(
         self,
         department_id: Optional[str] = None,
+        category: Optional[str] = None,
         status: Optional[str] = None,
         limit: int = 50,
         offset: int = 0
@@ -230,6 +263,8 @@ class TicketService:
         
         if department_id:
             query = query.eq("department_id", department_id)
+        if category:
+            query = query.eq("category", category)
         if status:
             query = query.eq("status", status)
         

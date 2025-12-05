@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     # Telegram Bot
     TELEGRAM_BOT_API_KEY: Union[str, None] = None  # API key for Telegram bot authentication
     
+    # WhatsApp Bot
+    WHATSAPP_BOT_API_KEY: Union[str, None] = None  # API key for WhatsApp bot authentication
+    
     @field_validator('CORS_ORIGINS', mode='before')
     @classmethod
     def parse_cors_origins(cls, v):

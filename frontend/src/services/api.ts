@@ -43,6 +43,11 @@ export const getTickets = async (params?: any) => {
   return response.data
 }
 
+export const getAutoResolvedTickets = async (params?: { limit?: number; offset?: number }) => {
+  const response = await api.get('/api/tickets/auto-resolved', { params })
+  return response.data
+}
+
 export const getTicket = async (id: string) => {
   const response = await api.get(`/api/tickets/${id}`)
   return response.data
@@ -205,6 +210,30 @@ export const getMonitoringMetrics = async (fromDate?: string, toDate?: string) =
   if (toDate) params.append('to_date', toDate)
   
   const response = await api.get(`/api/admin/monitoring/metrics?${params.toString()}`)
+  return response.data
+}
+
+// Ticket AI Recommendations
+export const getAIRecommendations = async (ticketId: string) => {
+  const response = await api.get(`/api/tickets/${ticketId}/ai-recommendations`)
+  return response.data
+}
+
+// Chat History
+export const getChatHistory = async (ticketId: string) => {
+  const response = await api.get(`/api/tickets/${ticketId}/chat-history`)
+  return response.data
+}
+
+// Classification Feedback
+export const submitClassificationFeedback = async (ticketId: string, feedback: {
+  is_correct?: boolean
+  category?: string
+  department_id?: string
+  priority?: string
+  notes?: string
+}) => {
+  const response = await api.post(`/api/tickets/${ticketId}/classify-feedback`, feedback)
   return response.data
 }
 

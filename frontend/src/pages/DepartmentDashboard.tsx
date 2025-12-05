@@ -11,7 +11,12 @@ export default function DepartmentDashboard() {
   const navigate = useNavigate()
   const { t } = useTranslation()
 
-  const { data: tickets = [], isLoading: loading, refetch: refetchTickets } = useTickets()
+  // Фильтруем тикеты по department_id пользователя
+  // Инженеры видят только тикеты своего департамента
+  const { data: tickets = [], isLoading: loading, refetch: refetchTickets, error: ticketsError } = useTickets({
+    department_id: userProfile?.department_id,
+    status: 'in_progress' // Показываем только тикеты в работе
+  })
 
   const loadTickets = () => {
     refetchTickets()
@@ -24,7 +29,7 @@ export default function DepartmentDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-cyan-50 to-green-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <div className="text-gray-700 font-medium">{t('common.loading')}</div>
@@ -34,12 +39,17 @@ export default function DepartmentDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-green-50">
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{t('dashboard.departmentTickets')}</h1>
+              {userProfile?.department_id && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Показываются только тикеты вашего департамента
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-4">
               <LanguageSwitcher />
@@ -72,12 +82,20 @@ export default function DepartmentDashboard() {
             </button>
           </div>
           
-          {tickets.length === 0 ? (
+          {ticketsError ? (
+            <div className="bg-red-50 border border-red-200 rounded-xl shadow-sm p-12 text-center">
+              <FileText className="w-16 h-16 text-red-400 mx-auto mb-4" />
+              <p className="text-lg font-medium text-red-900 mb-2">Ошибка загрузки тикетов</p>
+              <p className="text-sm text-red-600">
+                {ticketsError.message || 'Не удалось загрузить тикеты'}
+              </p>
+            </div>
+          ) : tickets.length === 0 ? (
             <div className="bg-white rounded-xl shadow-sm p-12 text-center">
               <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <p className="text-lg font-medium text-gray-900 mb-2">{t('dashboard.noTickets')}</p>
               <p className="text-sm text-gray-500">
-                {t('dashboard.departmentTickets')} {t('dashboard.noTickets')}
+                Нет тикетов в работе для вашего департамента
               </p>
             </div>
           ) : (

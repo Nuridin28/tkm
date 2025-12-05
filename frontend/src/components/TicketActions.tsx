@@ -47,16 +47,22 @@ export default function TicketActions({ ticket, onUpdate, departments = [], user
 
   const loading = deleteTicketMutation.isPending || assignTicketMutation.isPending
 
+  // Скрываем кнопку назначения, если тикет уже подтвержден (статус in_progress)
+  // Тикет автоматически назначается в отдел при подтверждении классификации
+  const canAssign = ticket.status === 'new' || ticket.status === 'accepted'
+
   return (
     <div className="flex gap-2">
-      <button
-        onClick={() => setShowAssignModal(true)}
-        className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
-        title={t('tickets.assign')}
-      >
-        <Pin className="w-4 h-4" />
-        {t('tickets.assign')}
-      </button>
+      {canAssign && (
+        <button
+          onClick={() => setShowAssignModal(true)}
+          className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+          title={t('tickets.assign')}
+        >
+          <Pin className="w-4 h-4" />
+          {t('tickets.assign')}
+        </button>
+      )}
       <button
         onClick={() => setShowDeleteConfirm(true)}
         className="flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"

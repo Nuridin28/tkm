@@ -8,15 +8,16 @@ export const metricsKeys = {
   list: (params?: any) => [...metricsKeys.lists(), params] as const,
 }
 
-// Get metrics
+// Get metrics with auto-refresh
 export function useMetrics(params?: any) {
   return useQuery({
     queryKey: metricsKeys.list(params),
     queryFn: () => getMetrics(params),
-    staleTime: 60000, // 1 минута - метрики обновляются реже
+    staleTime: 30000, // 30 секунд - данные считаются свежими
     gcTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    refetchOnWindowFocus: true, // Обновлять при фокусе окна
+    refetchOnMount: true, // Обновлять при монтировании
+    refetchInterval: 30000, // Автообновление каждые 30 секунд
   })
 }
 

@@ -7,21 +7,48 @@
   top: 2rem;
 }
 
-.ai-assistant-panel h3 {
+.ai-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin-bottom: 1rem;
-  color: #333;
-  border-bottom: 2px solid #667eea;
+  border-bottom: 2px solid #0066CC;
   padding-bottom: 0.5rem;
+}
+
+.ai-icon {
+  width: 24px;
+  height: 24px;
+  color: #0066CC;
+}
+
+.ai-assistant-panel h3 {
+  margin: 0;
+  color: #333;
+  font-size: 1.1rem;
 }
 
 .ai-section {
   margin-bottom: 1.5rem;
 }
 
+.ai-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.section-icon {
+  width: 18px;
+  height: 18px;
+  color: #0066CC;
+}
+
 .ai-section h4 {
   font-size: 0.875rem;
   color: #666;
-  margin-bottom: 0.5rem;
+  margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -32,3 +59,210 @@
   font-size: 0.9rem;
 }
 
+.ai-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  color: #666;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.recommendation-box {
+  background: #f0f7ff;
+  border-left: 4px solid #0066CC;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+}
+
+.recommendation-box p {
+  margin: 0;
+  color: #333;
+}
+
+.confidence-badge {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  background: #e3f2fd;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #1976d2;
+}
+
+.solutions-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0 0;
+}
+
+.solutions-list li {
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  background: #f5f5f5;
+  border-left: 3px solid #00A651;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.solutions-list li:last-child {
+  margin-bottom: 0;
+}
+
+.classification-section {
+  border-top: 2px solid #e0e0e0;
+  padding-top: 1rem;
+}
+
+.classification-info {
+  margin-bottom: 1rem;
+}
+
+.classification-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.classification-item:last-child {
+  border-bottom: none;
+}
+
+.classification-item .label {
+  font-weight: 500;
+  color: #666;
+  font-size: 0.875rem;
+}
+
+.classification-item .value {
+  color: #333;
+  font-size: 0.875rem;
+}
+
+.classification-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-approve,
+.btn-change,
+.btn-save,
+.btn-cancel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
+}
+
+.btn-approve {
+  background: linear-gradient(135deg, #00A651 0%, #008A42 100%);
+  color: white;
+}
+
+.btn-approve:hover:not(:disabled) {
+  background: linear-gradient(135deg, #008A42 0%, #006B33 100%);
+}
+
+.btn-change {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.btn-change:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+
+.btn-save {
+  background: linear-gradient(135deg, #0066CC 0%, #0052A3 100%);
+  color: white;
+}
+
+.btn-save:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0052A3 0%, #003d7a 100%);
+}
+
+.btn-cancel {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+
+.btn-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.edit-classification-form {
+  margin-top: 1rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.form-group select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.no-recommendations {
+  color: #999;
+  font-style: italic;
+  text-align: center;
+  padding: 1rem;
+}
+
+.auto-resolved {
+  background: #e8f5e9;
+  padding: 1rem;
+  border-radius: 4px;
+  border-left: 4px solid #00A651;
+}
+
+.auto-resolved h4 {
+  color: #00A651;
+  margin-bottom: 0.5rem;
+}
+
+.auto-resolved p {
+  color: #333;
+  margin: 0;
+}

@@ -17,8 +17,9 @@ export default function EngineerDashboard() {
 
   const loadTickets = async () => {
     try {
-      // Загрузить только тикеты, назначенные этому инженеру
-      const data = await getTickets({ engineer_id: userProfile?.id }).catch(() => [])
+      // Инженеры видят тикеты по category (определяется по department)
+      // Backend автоматически определит category по department_id инженера
+      const data = await getTickets({ status: 'in_progress' }).catch(() => [])
       setTickets(data || [])
     } catch (error) {
       console.error('Failed to load tickets:', error)
@@ -52,13 +53,13 @@ export default function EngineerDashboard() {
 
       <main className="dashboard-content">
         <section className="tickets-section">
-          <h2>Мои выездные задания</h2>
+          <h2>Тикеты моей категории</h2>
           {tickets.length === 0 ? (
             <div className="empty-state">
               <div className="empty-icon">🔧</div>
-              <p>Нет назначенных заданий</p>
+              <p>Нет тикетов</p>
               <p className="empty-subtitle">
-                Выездные задания будут отображаться здесь
+                Тикеты вашей категории будут отображаться здесь
               </p>
             </div>
           ) : (

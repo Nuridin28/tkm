@@ -71,7 +71,7 @@
 }
 
 .bot-info svg {
-  color: #6366f1;
+  color: #0066CC;
   flex-shrink: 0;
 }
 
@@ -183,12 +183,12 @@
 }
 
 .restart-button {
-  background: #6366f1;
+  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%);
   color: white;
 }
 
 .restart-button:hover:not(:disabled) {
-  background: #4f46e5;
+  background: linear-gradient(135deg, #0052A3 0%, #008A42 100%);
 }
 
 .action-button:disabled {

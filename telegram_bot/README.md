@@ -95,8 +95,8 @@ telegram_bot/
 
 Бот использует следующие endpoints backend:
 
-- `POST /api/telegram/analyze` - Анализ сообщения через RAG/AI
-- `POST /api/telegram/create-ticket` - Создание тикета
+- `POST /api/public/chat` - Анализ сообщения через RAG/AI (основной API)
+- `POST /api/public/chat/create-ticket` - Создание тикета (основной API)
 
 ## Безопасность
 
@@ -119,7 +119,7 @@ telegram_bot/
 
 **Ошибки при создании тикетов:**
 - Проверьте `TELEGRAM_BOT_API_KEY` в обоих `.env` файлах
-- Убедитесь, что backend endpoint `/api/telegram/create-ticket` доступен
+- Убедитесь, что backend endpoint `/api/public/chat` доступен
 
 **Ошибки анализа:**
 - Проверьте, что OpenAI API ключ настроен в backend

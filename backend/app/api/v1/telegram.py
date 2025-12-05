@@ -1,14 +1,34 @@
 """
-Telegram Bot API endpoints
+Telegram Bot API endpoints with RAG integration
 """
 from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from app.services.ticket_service import ticket_service
 from app.services.ai_service import ai_service
 from app.core.config import settings
+from app.core.database import get_supabase_admin
+from app.api.v1.public_chat import embed_query, extract_client_type, categorize_ticket
+from app.models.schemas import PublicChatMessage
+from datetime import datetime
+import json
+import time
+from openai import OpenAI
 
 router = APIRouter()
+
+# Инициализация OpenAI клиента
+_openai_client = None
+
+def get_openai_client():
+    """Get OpenAI client instance"""
+    global _openai_client
+    if _openai_client is None:
+        api_key = str(settings.OPENAI_API_KEY).strip()
+        if not api_key or not api_key.startswith('sk-'):
+            raise ValueError("Invalid OpenAI API key")
+        _openai_client = OpenAI(api_key=api_key, timeout=60.0, max_retries=3)
+    return _openai_client
 
 
 class AnalyzeMessageRequest(BaseModel):
@@ -55,47 +75,185 @@ def verify_telegram_api_key(api_key: Optional[str] = Header(None, alias="X-Teleg
 @router.post("/analyze", response_model=AnalyzeMessageResponse)
 async def analyze_message(
     request: AnalyzeMessageRequest,
-    api_key: Optional[str] = Header(None, alias="X-Telegram-API-Key")
+    api_key: Optional[str] = Header(None, alias="X-Telegram-API-Key"),
+    conversation_history: Optional[List[Dict[str, Any]]] = None
 ) -> AnalyzeMessageResponse:
     """
-    Analyze message using RAG/AI
+    Analyze message using RAG/AI (same logic as public_chat)
     Returns whether we can answer immediately or need to create a ticket
     """
     # Verify API key
     verify_telegram_api_key(api_key)
     
+    start_time = time.time()
+    
     try:
-        # Classify message
-        classification = await ai_service.classify_ticket(request.text, "")
+        # Normalize message
+        message = str(request.text).strip()
+        message = message.encode('utf-8', errors='ignore').decode('utf-8')
         
-        # Retrieve knowledge base snippets
-        kb_snippets = await ai_service.retrieve_kb(request.text, k=5)
+        # Build conversation history
+        if conversation_history is None:
+            conversation_history = []
         
-        # Try to generate answer
-        answer_result = await ai_service.generate_answer(
-            request.text,
-            classification["language"],
-            kb_snippets
-        )
+        # Extract client type
+        client_type = extract_client_type(conversation_history)
+        is_corporate = client_type == "corporate" if client_type else False
         
-        # Determine if we can answer based on confidence and answer quality
-        answer_text = answer_result.get("answer", "")
-        confidence = answer_result.get("confidence", 0.0)
-        can_answer = confidence > 0.7 and len(answer_text) > 20 and not answer_result.get("need_on_site", False)
+        # Create embedding for query
+        try:
+            query_emb = await embed_query(message)
+        except Exception as e:
+            print(f"Error creating embedding: {e}")
+            # Fallback to simple classification
+            classification = await ai_service.classify_ticket(message, "")
+            return AnalyzeMessageResponse(
+                can_answer=False,
+                category=classification.get("category"),
+                subcategory=classification.get("subcategory"),
+                priority=classification.get("priority", "medium"),
+                department=classification.get("department", "TechSupport"),
+                subject=message[:50] + "..." if len(message) > 50 else message
+            )
         
-        # Get department
-        department_name = classification.get("department", "TechSupport")
+        # Search in knowledge base using RAG
+        supabase = get_supabase_admin()
+        kazakhtelecom_result = supabase.rpc(
+            "match_documents",
+            {
+                "query_embedding": query_emb,
+                "match_count": 6,
+                "filter": {"source_type": "kazakhtelecom"}
+            }
+        ).execute()
+        
+        kazakhtelecom_chunks = kazakhtelecom_result.data or []
+        
+        # Build context
+        context = ""
+        max_similarity = 0.0
+        if kazakhtelecom_chunks:
+            # Filter chunks with reasonable similarity (>= 0.1) to avoid noise
+            filtered_chunks = [chunk for chunk in kazakhtelecom_chunks if chunk.get('similarity', 0.0) >= 0.1]
+            if not filtered_chunks:
+                filtered_chunks = kazakhtelecom_chunks[:3]  # Use top 3 if all are below 0.1
+            
+            context += "ИНФОРМАЦИЯ ИЗ ДОКУМЕНТА КАЗАХТЕЛЕКОМ:\n\n"
+            for i, chunk in enumerate(filtered_chunks):
+                page_info = f"(Страница {chunk.get('metadata', {}).get('page', '?')})" if chunk.get('metadata', {}).get('page') else ""
+                similarity = chunk.get('similarity', 0.0)
+                if similarity > max_similarity:
+                    max_similarity = similarity
+                context += f"[Информация {i + 1}] {page_info} (релевантность: {similarity:.2f})\n{chunk.get('content', '')}\n\n"
+        
+        # Generate answer using OpenAI with RAG context
+        if context:
+            system_prompt = f"""Ты часть системы Help Desk Казахтелеком. Твоя основная задача — отвечать пользователю через RAG по базе знаний.
+
+{"ТИП КЛИЕНТА: Корпоративный клиент\n\n" if is_corporate else ""}ВАЖНЫЕ ПРАВИЛА:
+1. ВСЕГДА пытайся ответить на вопрос пользователя, используя информацию из предоставленных фрагментов документации
+2. Если информация есть в фрагментах (даже частично) - используй её для формирования ответа
+3. НЕ придумывай информацию - используй ТОЛЬКО то, что есть в предоставленных фрагментах
+4. Отвечай на русском языке профессионально и понятно
+5. Всегда указывай номер страницы при цитировании из документации
+6. Будь вежливым и профессиональным
+7. Для информационных вопросов (тарифы, условия, возможности) старайся дать полный ответ на основе доступной информации
+
+ВАЖНО: Если у тебя есть информация из документации, даже если она не полностью покрывает вопрос - используй её для ответа. НЕ говори "нужно создать тикет" если можешь дать хотя бы частичный ответ на основе документации."""
+            
+            try:
+                client = get_openai_client()
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"{context}\n\nВопрос пользователя: {message}"}
+                    ],
+                    temperature=0.3,
+                    max_tokens=500
+                )
+                
+                answer_text = response.choices[0].message.content.strip()
+                confidence = max_similarity if max_similarity > 0.2 else 0.1
+                
+                # Check if answer contains ticket request
+                import re
+                ticket_match = re.search(
+                    r"\[TICKET_REQUIRED\]|создать тикет|нужен тикет|требуется тикет|обратитесь в техподдержку",
+                    answer_text,
+                    re.IGNORECASE
+                )
+                
+                # Check for technical issues (only real technical problems requiring intervention)
+                full_text_for_check = (message + " " + " ".join([m.get("content", "") for m in conversation_history])).lower()
+                is_technical_issue = bool(re.search(
+                    r"роутер не работает|модем не работает|оборудование сломалось|диагностика оборудования|техническая поломка|требуется ремонт|нужен выезд|помощь специалиста на месте|замена оборудования",
+                    full_text_for_check
+                ))
+                
+                # Check if it's an informational question (can be answered even with lower similarity)
+                is_informational = bool(re.search(
+                    r"могу ли|можно ли|как|что|где|когда|сколько|какие|какой|информац|узнать|расскажи|объясни|вопрос",
+                    message.lower()
+                ))
+                
+                # Determine similarity threshold based on question type
+                # For informational questions, use lower threshold (0.15 instead of 0.2)
+                similarity_threshold = 0.15 if is_informational else 0.2
+                
+                # Determine if we can answer
+                # Can answer if:
+                # 1. Have relevant information (similarity >= threshold)
+                # 2. Answer is meaningful (length > 20)
+                # 3. Answer doesn't explicitly request ticket
+                # 4. Not a technical issue requiring physical intervention
+                can_answer = (
+                    max_similarity >= similarity_threshold and 
+                    len(answer_text) > 20 and 
+                    not ticket_match and
+                    not is_technical_issue
+                )
+                
+                print(f"[TELEGRAM ANALYZE] Question: '{message[:50]}...'")
+                print(f"[TELEGRAM ANALYZE] max_similarity={max_similarity:.2f}, threshold={similarity_threshold:.2f}, is_informational={is_informational}, is_technical={is_technical_issue}")
+                print(f"[TELEGRAM ANALYZE] can_answer={can_answer}, answer_length={len(answer_text)}")
+                
+                # Remove ticket request from answer if present
+                if ticket_match:
+                    answer_text = re.sub(r"\[TICKET_REQUIRED\][\s\S]*$", "", answer_text).strip()
+                    answer_text = re.sub(r"создать тикет|нужен тикет|требуется тикет", "", answer_text, flags=re.IGNORECASE).strip()
+                
+                # Categorize ticket (for fallback)
+                categorization = categorize_ticket(message, conversation_history, client_type or "private")
+                
+                print(f"[TELEGRAM ANALYZE] max_similarity={max_similarity:.2f}, can_answer={can_answer}, is_technical={is_technical_issue}, has_ticket_request={bool(ticket_match)}")
+                
+                return AnalyzeMessageResponse(
+                    can_answer=can_answer,
+                    answer=answer_text if can_answer else None,
+                    category=categorization.get("category"),
+                    subcategory=categorization.get("subcategory"),
+                    priority=categorization.get("priority", "medium"),
+                    department=categorization.get("department", "TechSupport"),
+                    subject=message[:50] + "..." if len(message) > 50 else message
+                )
+            except Exception as e:
+                print(f"Error generating answer: {e}")
+        
+        # Fallback: no context or error
+        categorization = categorize_ticket(message, conversation_history, client_type or "private")
         
         return AnalyzeMessageResponse(
-            can_answer=can_answer,
-            answer=answer_text if can_answer else None,
-            category=classification.get("category"),
-            subcategory=classification.get("subcategory"),
-            priority=classification.get("priority", "medium"),
-            department=department_name,
-            subject=request.text[:50] + "..." if len(request.text) > 50 else request.text
+            can_answer=False,
+            category=categorization.get("category"),
+            subcategory=categorization.get("subcategory"),
+            priority=categorization.get("priority", "medium"),
+            department=categorization.get("department", "TechSupport"),
+            subject=message[:50] + "..." if len(message) > 50 else message
         )
+        
     except Exception as e:
+        print(f"Error in analyze_message: {e}")
         # В случае ошибки создаем тикет
         return AnalyzeMessageResponse(
             can_answer=False,

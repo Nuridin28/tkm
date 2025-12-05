@@ -14,7 +14,7 @@
 
 .ticket-header button {
   padding: 0.5rem 1rem;
-  background: #667eea;
+  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%);
   color: white;
   border: none;
   border-radius: 4px;
@@ -73,13 +73,13 @@
   margin-top: 1.5rem;
   padding: 1rem;
   background: #f0f7ff;
-  border-left: 4px solid #667eea;
+  border-left: 4px solid #0066CC;
   border-radius: 4px;
 }
 
 .ticket-summary h4 {
   margin-bottom: 0.5rem;
-  color: #667eea;
+  color: #0066CC;
 }
 
 .ticket-actions {
@@ -90,16 +90,33 @@
 
 .ticket-actions button {
   padding: 0.75rem 1.5rem;
-  background: #667eea;
+  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%);
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .ticket-actions button:hover {
-  background: #5568d3;
+  background: linear-gradient(135deg, #0052A3 0%, #008A42 100%);
+}
+
+.btn-chat-history {
+  background: #f5f5f5 !important;
+  color: #333 !important;
+}
+
+.btn-chat-history:hover {
+  background: #e0e0e0 !important;
+}
+
+.btn-icon {
+  width: 18px;
+  height: 18px;
 }
 
 .ticket-sidebar {
@@ -108,9 +125,143 @@
   gap: 1rem;
 }
 
+/* Chat History Modal */
+.chat-history-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 2rem;
+}
+
+.chat-history-content {
+  background: white;
+  border-radius: 8px;
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.chat-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.chat-history-header h2 {
+  margin: 0;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.close-button:hover {
+  background: #f5f5f5;
+}
+
+.close-icon {
+  width: 24px;
+  height: 24px;
+  color: #666;
+}
+
+.chat-history-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.chat-history-loading,
+.chat-history-empty {
+  text-align: center;
+  padding: 2rem;
+  color: #999;
+}
+
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.chat-message {
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.user-message {
+  background: #e3f2fd;
+  border-left: 4px solid #0066CC;
+  align-self: flex-end;
+  max-width: 80%;
+}
+
+.assistant-message {
+  background: #f5f5f5;
+  border-left: 4px solid #00A651;
+  align-self: flex-start;
+  max-width: 80%;
+}
+
+.message-role {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+}
+
+.message-content {
+  color: #333;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.message-timestamp {
+  font-size: 0.75rem;
+  color: #999;
+  margin-top: 0.5rem;
+}
+
 @media (max-width: 1024px) {
   .ticket-content {
     grid-template-columns: 1fr;
+  }
+
+  .chat-history-modal {
+    padding: 1rem;
+  }
+
+  .chat-history-content {
+    max-height: 95vh;
+  }
+
+  .user-message,
+  .assistant-message {
+    max-width: 90%;
   }
 }
 

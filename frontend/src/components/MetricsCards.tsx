@@ -38,14 +38,14 @@ export default function MetricsCards({ metrics }: MetricsCardsProps) {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-purple-500">
+      <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-green-500">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-gray-600 mb-1">{t('admin.slaCompliance')}</p>
             <p className="text-3xl font-bold text-gray-900">{metrics.sla_compliance.toFixed(1)}%</p>
           </div>
-          <div className="bg-purple-100 rounded-full p-3">
-            <CheckCircle2 className="w-6 h-6 text-purple-600" />
+          <div className="bg-green-100 rounded-full p-3">
+            <CheckCircle2 className="w-6 h-6 text-green-600" />
           </div>
         </div>
       </div>

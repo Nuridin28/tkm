@@ -33,7 +33,7 @@ export default function TicketCard({ ticket, onClick }: TicketCardProps) {
       case 'accepted':
         return 'bg-yellow-100 text-yellow-800'
       case 'in_progress':
-        return 'bg-purple-100 text-purple-800'
+        return 'bg-blue-100 text-blue-800'
       case 'resolved':
       case 'auto_resolved':
         return 'bg-green-100 text-green-800'
@@ -90,6 +90,21 @@ export default function TicketCard({ ticket, onClick }: TicketCardProps) {
       <h3 className="text-gray-900 font-semibold text-lg mb-2 line-clamp-2 flex-grow">
         {ticket.subject}
       </h3>
+      
+      {(ticket.category || ticket.subcategory) && (
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
+          {ticket.category && (
+            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
+              {ticket.category}
+            </span>
+          )}
+          {ticket.subcategory && (
+            <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
+              {ticket.subcategory}
+            </span>
+          )}
+        </div>
+      )}
       
       <p className="text-gray-600 text-sm mb-4 line-clamp-2 flex-grow">
         {ticket.description.slice(0, 100)}...

@@ -241,20 +241,125 @@ async def handle_company_info(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle user message/question - упрощенная версия: просто отвечает привет"""
+    """Handle user message/question with RAG"""
     try:
         if not update.message or not update.message.text:
             logger.warning("Received update without message text")
             return
         
-        # Просто отвечаем "привет" на любое сообщение
-        await update.message.reply_text("👋 Привет!")
+        user = update.effective_user
+        session = get_user_session(user.id, update.effective_chat.id, user.username)
+        
+        message_text = update.message.text.strip()
+        
+        # Build conversation history from session
+        conversation_history = session.conversation_history or []
+        
+        # Add current message to history
+        conversation_history.append({
+            "role": "user",
+            "content": message_text
+        })
+        
+        # Show typing indicator
+        await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+        
+        # Analyze message with RAG
+        contact_info = session.contact_info.model_dump() if session.contact_info else {}
+        analysis = await api_client.analyze_message(
+            message_text,
+            contact_info=contact_info,
+            conversation_history=conversation_history
+        )
+        
+        # Update conversation history and send answer
+        can_answer = analysis.get("can_answer", False)
+        ticket_created = analysis.get("ticketCreated", False)
+        answer = analysis.get("response") or analysis.get("answer")
+        ticket_draft = analysis.get("ticket_draft")
+        
+        # Сохраняем ticket_draft в сессии для возможного создания тикета
+        if ticket_draft:
+            session.ticket_draft = ticket_draft
+        
+        if ticket_created:
+            # Тикет уже создан автоматически
+            ticket_id = analysis.get("ticket_draft", {}).get("ticket_id") if ticket_draft else None
+            if answer:
+                try:
+                    await update.message.reply_text(
+                        f"{answer}\n\n✅ Тикет создан автоматически. Мы свяжемся с вами в ближайшее время.",
+                        parse_mode='Markdown',
+                        disable_web_page_preview=True
+                    )
+                except Exception as e:
+                    logger.warning(f"Markdown parse error, sending plain text: {e}")
+                    await update.message.reply_text(
+                        f"{answer}\n\n✅ Тикет создан автоматически. Мы свяжемся с вами в ближайшее время."
+                    )
+            else:
+                await update.message.reply_text(
+                    "✅ Ваш запрос зарегистрирован как тикет. Мы свяжемся с вами в ближайшее время."
+                )
+            logger.info(f"✅ Ticket auto-created for user {user.id}")
+        elif can_answer and answer:
+            # We can answer - send the answer
+            conversation_history.append({
+                "role": "assistant",
+                "content": answer
+            })
+            session.conversation_history = conversation_history
+            
+            # Send answer with Markdown formatting
+            try:
+                await update.message.reply_text(
+                    answer,
+                    parse_mode='Markdown',
+                    disable_web_page_preview=True
+                )
+            except Exception as e:
+                # Если Markdown не работает, отправляем без форматирования
+                logger.warning(f"Markdown parse error, sending plain text: {e}")
+                await update.message.reply_text(answer)
+            logger.info(f"✅ Answered message from {user.id} via RAG")
+        else:
+            # Can't answer - offer to create ticket
+            session.current_message = message_text
+            keyboard = [
+                [InlineKeyboardButton("✅ Создать тикет", callback_data=f"create_ticket_{user.id}")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            if answer:
+                # There's an answer but it's not sufficient (can_answer=False)
+                try:
+                    await update.message.reply_text(
+                        f"{answer}\n\nНе удалось найти полный ответ в базе знаний. Хотите создать тикет?",
+                        reply_markup=reply_markup,
+                        parse_mode='Markdown',
+                        disable_web_page_preview=True
+                    )
+                except Exception as e:
+                    logger.warning(f"Markdown parse error, sending plain text: {e}")
+                    await update.message.reply_text(
+                        f"{answer}\n\nНе удалось найти полный ответ в базе знаний. Хотите создать тикет?",
+                        reply_markup=reply_markup
+                    )
+            else:
+                # No answer at all
+                await update.message.reply_text(
+                    "К сожалению, я не могу ответить на этот вопрос автоматически. Хотите создать тикет для обращения в техподдержку?",
+                    reply_markup=reply_markup
+                )
         
     except Exception as e:
         logger.error(f"Error in handle_message: {e}", exc_info=True)
         try:
             if update.message:
-                await update.message.reply_text("👋 Привет!")
+                await update.message.reply_text(
+                    "❌ Произошла ошибка при обработке вашего сообщения. "
+                    "Пожалуйста, попробуйте еще раз или используйте /start для начала заново."
+                )
         except:
             pass
 
@@ -292,10 +397,60 @@ def main():
         # Create application
         application = Application.builder().token(settings.TELEGRAM_BOT_TOKEN).build()
         
-        # Упрощенная версия: просто отвечаем на сообщения
-        # Create simple message handler
+        # Add handlers
         application.add_handler(CommandHandler("start", start))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+        
+        # Add callback query handler for ticket creation
+        async def handle_ticket_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            query = update.callback_query
+            await query.answer()
+            
+            if query.data.startswith("create_ticket_"):
+                # Extract user_id from callback_data
+                user_id_str = query.data.replace("create_ticket_", "")
+                try:
+                    user_id = int(user_id_str)
+                except ValueError:
+                    await query.message.reply_text("❌ Ошибка: неверный формат данных.")
+                    return
+                
+                user = update.effective_user
+                session = get_user_session(user.id, query.message.chat_id, user.username)
+                
+                # Get message from session
+                message_text = session.current_message or "Запрос от пользователя"
+                
+                try:
+                    # Create ticket request
+                    from models import TicketRequest
+                    ticket_request = TicketRequest(
+                        subject=message_text[:50] + "..." if len(message_text) > 50 else message_text,
+                        description=message_text,
+                        contact_info=session.contact_info or ContactInfo(phone="", full_name="", user_type=UserType.INDIVIDUAL),
+                        telegram_user_id=user.id,
+                        telegram_chat_id=query.message.chat_id,
+                        telegram_username=user.username
+                    )
+                    
+                    # Используем ticket_draft из сессии если есть, иначе создаем новый
+                    ticket_draft = getattr(session, 'ticket_draft', None)
+                    result = await api_client.create_ticket(ticket_request, ticket_draft=ticket_draft)
+                    
+                    await query.message.reply_text(
+                        f"✅ Тикет #{result['ticket_id'][:8]} создан!\n\n"
+                        f"Приоритет: {result.get('priority', 'medium')}\n"
+                        f"Департамент: {result.get('department', 'TechSupport')}\n\n"
+                        f"Мы свяжемся с вами в ближайшее время."
+                    )
+                    
+                    # Clear current message
+                    session.current_message = None
+                except Exception as e:
+                    logger.error(f"Error creating ticket: {e}")
+                    await query.message.reply_text("❌ Ошибка при создании тикета. Попробуйте еще раз.")
+        
+        application.add_handler(CallbackQueryHandler(handle_ticket_callback))
         
         # Add error handler
         application.add_error_handler(error_handler)

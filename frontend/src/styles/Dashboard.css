@@ -1,6 +1,6 @@
 .dashboard {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%);
   background-attachment: fixed;
 }
 
@@ -25,7 +25,7 @@
   margin: 0;
   font-size: 1.75rem;
   font-weight: 700;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -54,7 +54,7 @@
 }
 
 .dashboard-nav button.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%);
   color: white;
 }
 
@@ -75,7 +75,7 @@
 
 .btn-primary {
   padding: 0.625rem 1.25rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -83,12 +83,12 @@
   font-weight: 500;
   font-size: 0.875rem;
   transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 102, 204, 0.3);
 }
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.4);
 }
 
 .btn-secondary {
@@ -243,8 +243,8 @@
 .call-agent-form input:focus,
 .call-agent-form textarea:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #0066CC;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
 }
 
 .form-row {

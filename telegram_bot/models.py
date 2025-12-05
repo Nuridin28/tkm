@@ -1,7 +1,7 @@
 """
 Data models for Telegram Bot
 """
-from typing import Optional, Literal
+from typing import Optional, Literal, List, Dict, Any
 from pydantic import BaseModel, EmailStr, Field
 from enum import Enum
 
@@ -36,6 +36,8 @@ class UserSession(BaseModel):
     current_message: Optional[str] = None
     waiting_for: Optional[str] = None  # "phone", "email", "name", "type", "message", etc.
     language: str = "ru"
+    conversation_history: List[Dict[str, Any]] = Field(default_factory=list, description="Conversation history for RAG")
+    ticket_draft: Optional[Dict[str, Any]] = Field(default=None, description="Draft ticket data from chat API")
 
 
 class TicketRequest(BaseModel):

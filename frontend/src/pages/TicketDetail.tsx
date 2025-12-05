@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { MessageCircle, Phone, Mail, Globe, User } from 'lucide-react'
-import { getTicket, updateTicket, acceptTicket, completeRemote } from '../services/api'
+import { MessageCircle, Phone, Mail, Globe, User, History, X } from 'lucide-react'
+import { getTicket, updateTicket, acceptTicket, completeRemote, getChatHistory } from '../services/api'
 import TicketTimeline from '../components/TicketTimeline'
 import AiAssistantPanel from '../components/AiAssistantPanel'
 import SLAClock from '../components/SLAClock'
@@ -14,6 +14,9 @@ export default function TicketDetail() {
   const { t } = useTranslation()
   const [ticket, setTicket] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [showChatHistory, setShowChatHistory] = useState(false)
+  const [chatHistory, setChatHistory] = useState<any[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
 
   const getSourceIcon = (source: string) => {
     switch (source) {
@@ -48,8 +51,13 @@ export default function TicketDetail() {
     try {
       const data = await getTicket(id!)
       setTicket(data)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load ticket:', error)
+      // Если ошибка доступа (403), показываем сообщение
+      if (error?.response?.status === 403) {
+        alert('У вас нет доступа к этому тикету. Он принадлежит другому департаменту.')
+        navigate('/dashboard')
+      }
     } finally {
       setLoading(false)
     }
@@ -71,6 +79,24 @@ export default function TicketDetail() {
     } catch (error) {
       console.error('Failed to complete ticket:', error)
     }
+  }
+
+  const handleShowChatHistory = async () => {
+    setShowChatHistory(true)
+    setLoadingHistory(true)
+    try {
+      const history = await getChatHistory(id!)
+      setChatHistory(history)
+    } catch (error) {
+      console.error('Failed to load chat history:', error)
+      setChatHistory([])
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
+  const handleClassificationUpdate = () => {
+    loadTicket()
   }
 
   if (loading) {
@@ -95,7 +121,12 @@ export default function TicketDetail() {
             <div className="ticket-meta">
               <span>{t('tickets.status')}: {t(`tickets.${ticket.status}`, ticket.status)}</span>
               <span>{t('tickets.priority')}: {t(`tickets.${ticket.priority}`, ticket.priority)}</span>
-              {ticket.category && <span>{t('tickets.category', 'Категория')}: {ticket.category}</span>}
+              {ticket.category && (
+                <span>
+                  {t('tickets.category', 'Категория')}: {ticket.category}
+                  {ticket.subcategory && ` / ${ticket.subcategory}`}
+                </span>
+              )}
               {ticket.source && (
                 <span className="flex items-center gap-1">
                   {t('tickets.source.label', 'Источник')}: {getSourceIcon(ticket.source)}
@@ -118,6 +149,12 @@ export default function TicketDetail() {
           <TicketTimeline ticketId={id!} />
 
           <div className="ticket-actions">
+            {(ticket.source === 'chat' || ticket.source === 'portal') && (
+              <button onClick={handleShowChatHistory} className="btn-chat-history">
+                <History className="btn-icon" />
+                История чата
+              </button>
+            )}
             {ticket.status === 'new' && (
               <button onClick={handleAccept}>Принять тикет</button>
             )}
@@ -128,9 +165,49 @@ export default function TicketDetail() {
         </div>
 
         <div className="ticket-sidebar">
-          <AiAssistantPanel ticket={ticket} />
+          <AiAssistantPanel ticket={ticket} onClassificationUpdate={handleClassificationUpdate} />
         </div>
       </div>
+
+      {/* Chat History Modal */}
+      {showChatHistory && (
+        <div className="chat-history-modal" onClick={() => setShowChatHistory(false)}>
+          <div className="chat-history-content" onClick={(e) => e.stopPropagation()}>
+            <div className="chat-history-header">
+              <h2>История чата</h2>
+              <button className="close-button" onClick={() => setShowChatHistory(false)}>
+                <X className="close-icon" />
+              </button>
+            </div>
+            <div className="chat-history-body">
+              {loadingHistory ? (
+                <div className="chat-history-loading">Загрузка...</div>
+              ) : chatHistory.length === 0 ? (
+                <div className="chat-history-empty">История чата не найдена</div>
+              ) : (
+                <div className="chat-messages">
+                  {chatHistory.map((message, index) => (
+                    <div
+                      key={index}
+                      className={`chat-message ${message.role === 'user' ? 'user-message' : 'assistant-message'}`}
+                    >
+                      <div className="message-role">
+                        {message.role === 'user' ? '👤 Пользователь' : '🤖 Ассистент'}
+                      </div>
+                      <div className="message-content">{message.content}</div>
+                      {message.timestamp && (
+                        <div className="message-timestamp">
+                          {new Date(message.timestamp).toLocaleString('ru-RU')}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
