@@ -1,0 +1,100 @@
+{
+  "common": {
+    "loading": "Жүктелуде...",
+    "error": "Қате",
+    "success": "Сәтті",
+    "save": "Сақтау",
+    "cancel": "Болдырмау",
+    "delete": "Жою",
+    "edit": "Өңдеу",
+    "create": "Жасау",
+    "update": "Жаңарту",
+    "close": "Жабу",
+    "back": "Артқа",
+    "next": "Келесі",
+    "previous": "Алдыңғы",
+    "search": "Іздеу",
+    "filter": "Сүзгі",
+    "actions": "Әрекеттер",
+    "you": "Сіз"
+  },
+  "auth": {
+    "login": "Кіру",
+    "logout": "Шығу",
+    "email": "Email",
+    "password": "Құпия сөз",
+    "signIn": "Кіру",
+    "signOut": "Шығу",
+    "forgotPassword": "Құпия сөзді ұмыттыңыз ба?"
+  },
+  "dashboard": {
+    "title": "Басқару панелі",
+    "tickets": "Тикеттер",
+    "users": "Пайдаланушылар",
+    "departments": "Бөлімдер",
+    "settings": "Баптаулар",
+    "myTickets": "Менің тикеттерім",
+    "allTickets": "Барлық тикеттер",
+    "departmentTickets": "Бөлім тикеттері",
+    "noTickets": "Тикеттер әлі жоқ",
+    "refresh": "Жаңарту"
+  },
+  "tickets": {
+    "title": "Тикеттер",
+    "subject": "Тақырып",
+    "description": "Сипаттама",
+    "status": "Күй",
+    "priority": "Басымдық",
+    "created": "Жасалған",
+    "assigned": "Тағайындалған",
+    "department": "Бөлім",
+    "assign": "Тағайындау",
+    "delete": "Жою",
+    "auto": "Авто",
+    "new": "Жаңа",
+    "accepted": "Қабылданған",
+    "inProgress": "Жұмыс істеуде",
+    "resolved": "Шешілген",
+    "closed": "Жабылған",
+    "critical": "Критикалық",
+    "high": "Жоғары",
+    "medium": "Орташа",
+    "low": "Төмен"
+  },
+  "users": {
+    "title": "Пайдаланушылар",
+    "name": "Аты",
+    "email": "Email",
+    "role": "Рөл",
+    "department": "Бөлім",
+    "createdAt": "Жасалған күні",
+    "addUser": "Пайдаланушы қосу",
+    "noUsers": "Пайдаланушылар әлі жоқ",
+    "deleteConfirm": "Сіз \"{{name}}\" пайдаланушысын жоюға сенімдісіз бе?",
+    "roles": {
+      "admin": "Әкімші",
+      "supervisor": "Күзетші",
+      "department_user": "Бөлім операторы",
+      "operator": "Оператор",
+      "engineer": "Инженер",
+      "call_agent": "Қоңырау орталығы операторы"
+    }
+  },
+  "departments": {
+    "title": "Бөлімдер",
+    "name": "Атауы",
+    "description": "Сипаттама",
+    "addDepartment": "Бөлім қосу",
+    "noDepartments": "Бөлімдер әлі жоқ",
+    "edit": "Өңдеу",
+    "delete": "Жою"
+  },
+  "admin": {
+    "title": "Админ панелі",
+    "metrics": "Метрикалар",
+    "totalTickets": "Барлығы тикеттер",
+    "autoResolveRate": "Автошешу",
+    "slaCompliance": "SLA сәйкестігі"
+  }
+}
+

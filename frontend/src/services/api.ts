@@ -1,0 +1,155 @@
+import axios from 'axios'
+import { createClient } from '@supabase/supabase-js'
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || ''
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY || ''
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+})
+
+// Add auth token to requests
+api.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`
+  }
+  return config
+})
+
+// Add response interceptor for error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      // Server responded with error
+      console.error('API Error:', error.response.status, error.response.data)
+    } else if (error.request) {
+      // Request made but no response
+      console.error('API Error: No response from server', error.request)
+    } else {
+      // Something else happened
+      console.error('API Error:', error.message)
+    }
+    return Promise.reject(error)
+  }
+)
+
+export const getTickets = async (params?: any) => {
+  const response = await api.get('/api/tickets', { params })
+  return response.data
+}
+
+export const getTicket = async (id: string) => {
+  const response = await api.get(`/api/tickets/${id}`)
+  return response.data
+}
+
+export const updateTicket = async (id: string, updates: any) => {
+  const response = await api.patch(`/api/tickets/${id}`, updates)
+  return response.data
+}
+
+export const acceptTicket = async (id: string) => {
+  const response = await api.post(`/api/tickets/${id}/accept`)
+  return response.data
+}
+
+export const completeRemote = async (id: string) => {
+  const response = await api.post(`/api/tickets/${id}/complete_remote`)
+  return response.data
+}
+
+export const requestOnSite = async (id: string) => {
+  const response = await api.post(`/api/tickets/${id}/request_on_site`)
+  return response.data
+}
+
+export const getMessages = async (ticketId: string) => {
+  const response = await api.get(`/api/tickets/${ticketId}/messages`)
+  return response.data
+}
+
+export const getMetrics = async (params?: any) => {
+  const response = await api.get('/api/admin/metrics', { params })
+  return response.data
+}
+
+export const processWithAI = async (ticketId: string) => {
+  const response = await api.post('/api/ai/process', { ticket_id: ticketId })
+  return response.data
+}
+
+export const searchKB = async (query: string, k: number = 5) => {
+  const response = await api.post('/api/ai/search', { query, k })
+  return response.data
+}
+
+export const ingestTicket = async (data: any) => {
+  const response = await api.post('/api/ingest', data)
+  return response.data
+}
+
+export const createUser = async (data: {
+  email: string
+  password: string
+  name: string
+  role: string
+  department_id?: string
+}) => {
+  const response = await api.post('/api/admin/users', data)
+  return response.data
+}
+
+export const deleteTicket = async (ticketId: string) => {
+  const response = await api.delete(`/api/tickets/${ticketId}`)
+  return response.data
+}
+
+export const assignTicket = async (ticketId: string, data: {
+  assigned_to?: string
+  department_id?: string
+}) => {
+  const response = await api.post(`/api/tickets/${ticketId}/assign`, data)
+  return response.data
+}
+
+export const getDepartments = async () => {
+  const response = await api.get('/api/admin/departments')
+  return response.data
+}
+
+export const createDepartment = async (data: {
+  name: string
+  description?: string
+}) => {
+  const response = await api.post('/api/admin/departments', data)
+  return response.data
+}
+
+export const updateDepartment = async (departmentId: string, data: {
+  name: string
+  description?: string
+}) => {
+  const response = await api.put(`/api/admin/departments/${departmentId}`, data)
+  return response.data
+}
+
+export const deleteDepartment = async (departmentId: string) => {
+  const response = await api.delete(`/api/admin/departments/${departmentId}`)
+  return response.data
+}
+
+export const getUsers = async () => {
+  const response = await api.get('/api/admin/users')
+  return response.data
+}
+
+export const deleteUser = async (userId: string) => {
+  const response = await api.delete(`/api/admin/users/${userId}`)
+  return response.data
+}
+

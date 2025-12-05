@@ -1,0 +1,34 @@
+.ai-assistant-panel {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 2rem;
+}
+
+.ai-assistant-panel h3 {
+  margin-bottom: 1rem;
+  color: #333;
+  border-bottom: 2px solid #667eea;
+  padding-bottom: 0.5rem;
+}
+
+.ai-section {
+  margin-bottom: 1.5rem;
+}
+
+.ai-section h4 {
+  font-size: 0.875rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ai-section p {
+  color: #333;
+  line-height: 1.6;
+  font-size: 0.9rem;
+}
+

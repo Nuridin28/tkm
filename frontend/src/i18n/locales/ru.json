@@ -1,0 +1,100 @@
+{
+  "common": {
+    "loading": "Загрузка...",
+    "error": "Ошибка",
+    "success": "Успешно",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "create": "Создать",
+    "update": "Обновить",
+    "close": "Закрыть",
+    "back": "Назад",
+    "next": "Далее",
+    "previous": "Назад",
+    "search": "Поиск",
+    "filter": "Фильтр",
+    "actions": "Действия",
+    "you": "Вы"
+  },
+  "auth": {
+    "login": "Вход",
+    "logout": "Выйти",
+    "email": "Email",
+    "password": "Пароль",
+    "signIn": "Войти",
+    "signOut": "Выйти",
+    "forgotPassword": "Забыли пароль?"
+  },
+  "dashboard": {
+    "title": "Панель управления",
+    "tickets": "Тикеты",
+    "users": "Пользователи",
+    "departments": "Департаменты",
+    "settings": "Настройки",
+    "myTickets": "Мои тикеты",
+    "allTickets": "Все тикеты",
+    "departmentTickets": "Тикеты отдела",
+    "noTickets": "Тикетов пока нет",
+    "refresh": "Обновить"
+  },
+  "tickets": {
+    "title": "Тикеты",
+    "subject": "Тема",
+    "description": "Описание",
+    "status": "Статус",
+    "priority": "Приоритет",
+    "created": "Создан",
+    "assigned": "Назначен",
+    "department": "Департамент",
+    "assign": "Назначить",
+    "delete": "Удалить",
+    "auto": "Авто",
+    "new": "Новый",
+    "accepted": "Принят",
+    "inProgress": "В работе",
+    "resolved": "Решен",
+    "closed": "Закрыт",
+    "critical": "Критический",
+    "high": "Высокий",
+    "medium": "Средний",
+    "low": "Низкий"
+  },
+  "users": {
+    "title": "Пользователи",
+    "name": "Имя",
+    "email": "Email",
+    "role": "Роль",
+    "department": "Департамент",
+    "createdAt": "Дата создания",
+    "addUser": "Добавить пользователя",
+    "noUsers": "Пользователей пока нет",
+    "deleteConfirm": "Вы уверены, что хотите удалить пользователя \"{{name}}\"?",
+    "roles": {
+      "admin": "Администратор",
+      "supervisor": "Супервизор",
+      "department_user": "Оператор отдела",
+      "operator": "Оператор",
+      "engineer": "Инженер",
+      "call_agent": "Оператор колл-центра"
+    }
+  },
+  "departments": {
+    "title": "Департаменты",
+    "name": "Название",
+    "description": "Описание",
+    "addDepartment": "Добавить департамент",
+    "noDepartments": "Департаментов пока нет",
+    "edit": "Редактировать",
+    "delete": "Удалить"
+  },
+  "admin": {
+    "title": "Админ панель",
+    "metrics": "Метрики",
+    "totalTickets": "Всего тикетов",
+    "autoResolveRate": "Авторешение",
+    "slaCompliance": "SLA соответствие"
+  }
+}
+
