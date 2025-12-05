@@ -7,6 +7,7 @@ from app.services.ticket_service import ticket_service
 from app.core.auth import get_current_user, require_role
 from app.core.database import get_supabase_admin
 from typing import Dict, Any, Optional, List
+from datetime import datetime
 
 router = APIRouter()
 
@@ -30,6 +31,11 @@ async def update_ticket(
     user: Dict[str, Any] = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """Update ticket (manual override)"""
+    # Get current ticket to check for routing errors
+    current_ticket = await ticket_service.get_ticket(ticket_id)
+    if not current_ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    
     update_dict = updates.model_dump(exclude_unset=True)
     
     # Convert enums to strings
@@ -37,6 +43,16 @@ async def update_ticket(
         update_dict["status"] = update_dict["status"].value
     if "priority" in update_dict:
         update_dict["priority"] = update_dict["priority"].value
+    
+    # Log routing error if department changed
+    if "department_id" in update_dict and update_dict["department_id"] != current_ticket.get("department_id"):
+        await ticket_service._log_routing_error(
+            ticket_id=ticket_id,
+            initial_department_id=current_ticket.get("department_id"),
+            correct_department_id=update_dict["department_id"],
+            routed_by=user.get("id"),
+            error_type="wrong_department"
+        )
     
     ticket = await ticket_service.update_ticket(ticket_id, update_dict)
     return ticket
@@ -48,8 +64,24 @@ async def accept_ticket(
     user: Dict[str, Any] = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """Accept ticket (agent action)"""
-    updates = {"status": "accepted"}
+    # Get ticket to calculate response time
+    ticket = await ticket_service.get_ticket(ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    now = datetime.utcnow()
+    created_at = datetime.fromisoformat(ticket["created_at"].replace('Z', '+00:00'))
+    response_time_seconds = int((now - created_at).total_seconds())
+    
+    updates = {
+        "status": "accepted",
+        "first_response_at": now.isoformat()
+    }
     ticket = await ticket_service.update_ticket(ticket_id, updates)
+    
+    # Log response time
+    await ticket_service._log_response_time(ticket_id, now, response_time_seconds, "human")
+    
     return ticket
 
 

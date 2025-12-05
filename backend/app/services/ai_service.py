@@ -8,7 +8,15 @@ from app.core.config import settings
 from app.core.database import get_supabase
 from langdetect import detect, LangDetectException
 
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
+# Ленивая инициализация клиента для избежания проблем при импорте
+_client = None
+
+def get_openai_client():
+    """Get OpenAI client instance (lazy initialization)"""
+    global _client
+    if _client is None:
+        _client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    return _client
 
 
 class AIService:
@@ -31,6 +39,7 @@ class AIService:
     
     def get_embedding(self, text: str) -> List[float]:
         """Get embedding for text"""
+        client = get_openai_client()
         response = client.embeddings.create(
             model=self.embedding_model,
             input=text
@@ -57,6 +66,7 @@ class AIService:
         user_prompt = full_text
         
         try:
+            client = get_openai_client()
             response = client.chat.completions.create(
                 model=self.model,
                 messages=[
@@ -143,6 +153,7 @@ class AIService:
         user_prompt = f"{snippets_text}\n\nОбращение клиента:\n{ticket_text}"
         
         try:
+            client = get_openai_client()
             response = client.chat.completions.create(
                 model=self.model,
                 messages=[
@@ -173,6 +184,7 @@ class AIService:
         prompt = f"Создай краткое резюме (1-3 предложения) на языке {language}:\n\n{ticket_text}"
         
         try:
+            client = get_openai_client()
             response = client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],

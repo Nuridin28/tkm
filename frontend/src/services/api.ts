@@ -153,3 +153,58 @@ export const deleteUser = async (userId: string) => {
   return response.data
 }
 
+// Public chat API (без авторизации)
+const publicApi = axios.create({
+  baseURL: API_BASE_URL,
+})
+
+export const sendChatMessage = async (data: {
+  message: string
+  conversation_history: Array<{ role: string; content: string; timestamp?: string }>
+  contact_info?: { phone?: string; email?: string }
+}) => {
+  const response = await publicApi.post('/api/public/chat', data)
+  return response.data
+}
+
+export const createTicketFromChat = async (ticketDraft: any) => {
+  const response = await publicApi.post('/api/public/chat/create-ticket', ticketDraft)
+  return response.data
+}
+
+// Bot Management API
+export const getBots = async () => {
+  const response = await api.get('/api/admin/bots')
+  return response.data
+}
+
+export const getBotStatus = async (botType: string) => {
+  const response = await api.get(`/api/admin/bots/${botType}/status`)
+  return response.data
+}
+
+export const startBot = async (botType: string) => {
+  const response = await api.post(`/api/admin/bots/${botType}/start`)
+  return response.data
+}
+
+export const stopBot = async (botType: string) => {
+  const response = await api.post(`/api/admin/bots/${botType}/stop`)
+  return response.data
+}
+
+export const restartBot = async (botType: string) => {
+  const response = await api.post(`/api/admin/bots/${botType}/restart`)
+  return response.data
+}
+
+// Monitoring API
+export const getMonitoringMetrics = async (fromDate?: string, toDate?: string) => {
+  const params = new URLSearchParams()
+  if (fromDate) params.append('from_date', fromDate)
+  if (toDate) params.append('to_date', toDate)
+  
+  const response = await api.get(`/api/admin/monitoring/metrics?${params.toString()}`)
+  return response.data
+}
+

@@ -21,7 +21,11 @@ from api_client import APIClient
 # Enable logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    level=logging.INFO,
+    handlers=[
+        logging.FileHandler('bot.log'),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
@@ -64,31 +68,12 @@ def validate_email(email: str) -> bool:
     return bool(re.match(pattern, email))
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Start command - begin conversation"""
-    user = update.effective_user
-    session = get_user_session(user.id, update.effective_chat.id, user.username)
-    
-    welcome_text = (
-        "👋 Добро пожаловать в службу поддержки!\n\n"
-        "Для начала работы нам нужна ваша контактная информация.\n\n"
-        "📱 Пожалуйста, отправьте ваш номер телефона.\n"
-        "Вы можете использовать кнопку ниже или написать номер вручную:"
-    )
-    
-    # Предлагаем кнопку для отправки контакта
-    keyboard = [
-        [KeyboardButton("📱 Отправить мой контакт", request_contact=True)]
-    ]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
-    
-    await update.message.reply_text(
-        welcome_text,
-        reply_markup=reply_markup
-    )
-    
-    session.waiting_for = "phone"
-    return WAITING_FOR_PHONE
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Start command - просто отвечает привет"""
+    try:
+        await update.message.reply_text("👋 Привет! Чем могу помочь?")
+    except Exception as e:
+        logger.error(f"Error in start: {e}", exc_info=True)
 
 
 async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -255,75 +240,23 @@ async def handle_company_info(update: Update, context: ContextTypes.DEFAULT_TYPE
     return WAITING_FOR_MESSAGE
 
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handle user message/question"""
-    user = update.effective_user
-    session = get_user_session(user.id, update.effective_chat.id, user.username)
-    
-    message_text = update.message.text.strip()
-    session.current_message = message_text
-    
-    if not session.contact_info or not session.contact_info.full_name:
-        await update.message.reply_text(
-            "❌ Сначала нужно заполнить контактную информацию.\n"
-            "Используйте команду /start для начала."
-        )
-        return ConversationHandler.END
-    
-    # Отправляем сообщение о том, что обрабатываем
-    processing_msg = await update.message.reply_text("⏳ Обрабатываю ваш запрос...")
-    
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle user message/question - упрощенная версия: просто отвечает привет"""
     try:
-        # Анализируем сообщение через RAG/AI
-        contact_dict = session.contact_info.model_dump() if session.contact_info else {}
-        ai_result = await api_client.analyze_message(message_text, contact_dict)
+        if not update.message or not update.message.text:
+            logger.warning("Received update without message text")
+            return
         
-        if ai_result.get("can_answer", False) and ai_result.get("answer"):
-            # Можем ответить сразу
-            answer = ai_result["answer"]
-            await processing_msg.edit_text(
-                f"✅ Ответ:\n\n{answer}\n\n"
-                "Если у вас есть еще вопросы, просто напишите их."
-            )
-            # Остаемся в состоянии ожидания сообщения
-            return WAITING_FOR_MESSAGE
-        else:
-            # Нужно создать тикет
-            subject = ai_result.get("subject") or message_text[:50] + "..."
-            
-            ticket_request = TicketRequest(
-                source="telegram",
-                subject=subject,
-                description=message_text,
-                contact_info=session.contact_info,
-                telegram_user_id=user.id,
-                telegram_chat_id=update.effective_chat.id,
-                telegram_username=user.username
-            )
-            
-            ticket_result = await api_client.create_ticket(ticket_request)
-            ticket_id = ticket_result.get("ticket_id", "unknown")
-            
-            await processing_msg.edit_text(
-                f"✅ Ваше обращение принято!\n\n"
-                f"📋 Номер тикета: #{ticket_id[:8]}\n"
-                f"📊 Приоритет: {ai_result.get('priority', 'medium')}\n"
-                f"🏢 Отдел: {ai_result.get('department', 'TechSupport')}\n\n"
-                "Наш специалист свяжется с вами в ближайшее время.\n\n"
-                "Если у вас есть еще вопросы, используйте команду /start для нового обращения."
-            )
-            
-            # Сбрасываем сессию
-            session.current_message = None
-            return ConversationHandler.END
-            
+        # Просто отвечаем "привет" на любое сообщение
+        await update.message.reply_text("👋 Привет!")
+        
     except Exception as e:
-        logger.error(f"Error processing message: {e}")
-        await processing_msg.edit_text(
-            "❌ Произошла ошибка при обработке вашего запроса.\n"
-            "Пожалуйста, попробуйте позже или свяжитесь с поддержкой напрямую."
-        )
-        return ConversationHandler.END
+        logger.error(f"Error in handle_message: {e}", exc_info=True)
+        try:
+            if update.message:
+                await update.message.reply_text("👋 Привет!")
+        except:
+            pass
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -339,44 +272,44 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle errors that occur during update processing"""
+    logger.error(f"Exception while handling an update: {context.error}", exc_info=context.error)
+    
+    # Try to send error message to user if update is available
+    if isinstance(update, Update) and update.effective_message:
+        try:
+            await update.effective_message.reply_text(
+                "❌ Произошла ошибка. Пожалуйста, используйте команду /start для начала заново."
+            )
+        except:
+            pass
+
+
 def main():
     """Start the bot"""
-    # Create application
-    application = Application.builder().token(settings.TELEGRAM_BOT_TOKEN).build()
-    
-    # Create conversation handler
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
-        states={
-            WAITING_FOR_PHONE: [
-                MessageHandler(filters.CONTACT | filters.TEXT & ~filters.COMMAND, handle_contact)
-            ],
-            WAITING_FOR_EMAIL: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_email)
-            ],
-            WAITING_FOR_NAME: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_name)
-            ],
-            WAITING_FOR_USER_TYPE: [
-                CallbackQueryHandler(handle_user_type, pattern="^type_")
-            ],
-            WAITING_FOR_COMPANY_INFO: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_company_info)
-            ],
-            WAITING_FOR_MESSAGE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message)
-            ],
-        },
-        fallbacks=[CommandHandler("cancel", cancel)],
-    )
-    
-    # Add handlers
-    application.add_handler(conv_handler)
-    application.add_handler(CommandHandler("cancel", cancel))
-    
-    # Start bot
-    logger.info("Starting bot...")
-    application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
+    try:
+        # Create application
+        application = Application.builder().token(settings.TELEGRAM_BOT_TOKEN).build()
+        
+        # Упрощенная версия: просто отвечаем на сообщения
+        # Create simple message handler
+        application.add_handler(CommandHandler("start", start))
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+        
+        # Add error handler
+        application.add_error_handler(error_handler)
+        
+        # Start bot
+        logger.info("Starting bot...")
+        application.run_polling(
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=True,
+            close_loop=False
+        )
+    except Exception as e:
+        logger.error(f"Fatal error in main: {e}", exc_info=True)
+        raise
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ import DepartmentDashboard from './pages/DepartmentDashboard'
 import EngineerDashboard from './pages/EngineerDashboard'
 import CallAgentDashboard from './pages/CallAgentDashboard'
 import TicketDetail from './pages/TicketDetail'
+import PublicSupport from './pages/PublicSupport'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/support" element={<PublicSupport />} />
           <Route
             path="/dashboard"
             element={
@@ -63,7 +65,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<Navigate to="/support" replace />} />
         </Routes>
       </Router>
     </AuthProvider>

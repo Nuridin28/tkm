@@ -1,0 +1,17 @@
+/* Скрытие скроллбара для навигации */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Адаптивные стили для хедера */
+@media (max-width: 640px) {
+  header nav {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+

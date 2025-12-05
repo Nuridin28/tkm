@@ -14,6 +14,7 @@ class TicketSource(str, Enum):
     PHONE = "phone"
     CALL_AGENT = "call_agent"
     TELEGRAM = "telegram"
+    WHATSAPP = "whatsapp"
 
 
 class TicketStatus(str, Enum):
@@ -131,6 +132,46 @@ class MetricsResponse(BaseModel):
     period_to: datetime
 
 
+class ClassificationAccuracy(BaseModel):
+    total_classifications: int
+    correct_classifications: int
+    accuracy_percentage: float
+    by_category: Dict[str, float]
+    by_department: Dict[str, float]
+
+
+class AutoResolveStats(BaseModel):
+    total_auto_resolved: int
+    total_tickets: int
+    auto_resolve_rate: float
+    avg_confidence: float
+    by_category: Dict[str, int]
+
+
+class ResponseTimeStats(BaseModel):
+    avg_response_time_seconds: float
+    median_response_time_seconds: float
+    p95_response_time_seconds: float
+    by_source: Dict[str, float]
+    by_department: Dict[str, float]
+
+
+class RoutingErrorStats(BaseModel):
+    total_routing_errors: int
+    error_rate: float
+    by_error_type: Dict[str, int]
+    by_department: Dict[str, int]
+
+
+class MonitoringMetrics(BaseModel):
+    classification_accuracy: ClassificationAccuracy
+    auto_resolve_stats: AutoResolveStats
+    response_time_stats: ResponseTimeStats
+    routing_error_stats: RoutingErrorStats
+    period_from: datetime
+    period_to: datetime
+
+
 class UserCreate(BaseModel):
     email: str
     password: str
@@ -160,4 +201,26 @@ class DepartmentResponse(BaseModel):
     description: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+
+
+# Public chat schemas
+class PublicChatMessage(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+    timestamp: Optional[datetime] = None
+
+
+class PublicChatRequest(BaseModel):
+    message: str
+    conversation_history: List[PublicChatMessage] = []
+    contact_info: Optional[Dict[str, str]] = None  # {"phone": "...", "email": "..."}
+
+
+class PublicChatResponse(BaseModel):
+    response: str
+    can_answer: bool  # Может ли ИИ ответить на вопрос
+    needs_clarification: bool  # Нужны ли уточнения
+    should_create_ticket: bool  # Нужно ли создать тикет
+    ticket_draft: Optional[Dict[str, Any]] = None  # Драфт тикета если нужен
+    conversation_history: List[PublicChatMessage] = []
 

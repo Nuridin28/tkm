@@ -12,14 +12,17 @@ import RegisterUser from './RegisterUser'
 import DepartmentManager from '../components/DepartmentManager'
 import UserList from '../components/UserList'
 import LanguageSwitcher from '../components/LanguageSwitcher'
-import { LogOut, User, Ticket, Building, Settings, Plus, RefreshCw } from 'lucide-react'
+import { LogOut, User, Ticket, Building, Settings, Plus, RefreshCw, Bot, BarChart3 } from 'lucide-react'
+import BotManager from '../components/BotManager'
+import MonitoringPanel from '../components/MonitoringPanel'
+import '../styles/AdminDashboard.css'
 
 export default function AdminDashboard() {
   const { user, userProfile, signOut } = useAuth()
   const navigate = useNavigate()
   const { t } = useTranslation()
   const [showRegister, setShowRegister] = useState(false)
-  const [activeTab, setActiveTab] = useState<'tickets' | 'users' | 'departments' | 'settings'>('tickets')
+  const [activeTab, setActiveTab] = useState<'tickets' | 'users' | 'departments' | 'bots' | 'monitoring' | 'settings'>('tickets')
 
   const { data: tickets = [], isLoading: ticketsLoading, refetch: refetchTickets } = useTickets()
   const { data: metrics, isLoading: metricsLoading } = useMetrics()
@@ -50,53 +53,62 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-6">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+          <div className="flex justify-between items-center h-16 min-h-[4rem]">
+            <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 flex-1 min-w-0">
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent whitespace-nowrap">
                 {t('admin.title')}
               </h1>
-              <nav className="flex gap-1">
+              <nav className="flex gap-0.5 sm:gap-1 overflow-x-auto scrollbar-hide flex-1 min-w-0">
                 {[
                   { id: 'tickets', icon: Ticket, label: t('dashboard.tickets') },
                   { id: 'users', icon: User, label: t('dashboard.users') },
                   { id: 'departments', icon: Building, label: t('dashboard.departments') },
+                  { id: 'bots', icon: Bot, label: t('bots.title', 'Боты') },
+                  { id: 'monitoring', icon: BarChart3, label: 'Мониторинг' },
                   { id: 'settings', icon: Settings, label: t('dashboard.settings') },
                 ].map(({ id, icon: Icon, label }) => (
                   <button
                     key={id}
                     onClick={() => setActiveTab(id as any)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 lg:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
                       activeTab === id
                         ? 'bg-blue-100 text-blue-700'
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
+                    title={label}
                   >
-                    <Icon className="w-4 h-4" />
-                    {label}
+                    <Icon className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">{label}</span>
                   </button>
                 ))}
               </nav>
             </div>
-            <div className="flex items-center gap-4">
-              <LanguageSwitcher />
+            <div className="flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0 ml-2">
+              <div className="hidden sm:block">
+                <LanguageSwitcher />
+              </div>
               <button
                 onClick={() => setShowRegister(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 lg:px-4 py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-700 transition-colors whitespace-nowrap"
+                title={t('users.addUser')}
               >
-                <Plus className="w-4 h-4" />
-                {t('users.addUser')}
+                <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden lg:inline">{t('users.addUser')}</span>
               </button>
-              <div className="flex items-center gap-2 text-gray-700">
+              <div className="hidden md:flex items-center gap-2 text-gray-700">
                 <User className="w-4 h-4" />
-                <span className="text-sm font-medium">{userProfile?.name || user?.email}</span>
+                <span className="text-xs lg:text-sm font-medium truncate max-w-[100px] lg:max-w-none">
+                  {userProfile?.name || user?.email}
+                </span>
               </div>
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 lg:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors whitespace-nowrap"
+                title={t('auth.logout')}
               >
-                <LogOut className="w-4 h-4" />
-                {t('auth.logout')}
+                <LogOut className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden lg:inline">{t('auth.logout')}</span>
               </button>
             </div>
           </div>
@@ -156,6 +168,18 @@ export default function AdminDashboard() {
         {activeTab === 'departments' && (
           <section>
             <DepartmentManager />
+          </section>
+        )}
+
+        {activeTab === 'bots' && (
+          <section>
+            <BotManager />
+          </section>
+        )}
+
+        {activeTab === 'monitoring' && (
+          <section>
+            <MonitoringPanel />
           </section>
         )}
 

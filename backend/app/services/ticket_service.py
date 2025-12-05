@@ -104,19 +104,28 @@ class TicketService:
             "auto_assigned": True,
             "sla_accept_deadline": sla_accept_deadline.isoformat(),
             "sla_remote_deadline": sla_remote_deadline.isoformat(),
-            "updated_at": now.isoformat()
+            "updated_at": now.isoformat(),
+            "classification_confidence": classification.get("confidence", 0.0)
         }
         
         if auto_resolve:
             update_data["status"] = TicketStatus.AUTO_RESOLVED.value
             update_data["auto_resolved"] = True
             update_data["closed_at"] = now.isoformat()
+            update_data["first_response_at"] = now.isoformat()
         
         if answer_result["need_on_site"]:
             update_data["need_on_site"] = True
         
         # Update ticket
         self.supabase_admin.table("tickets").update(update_data).eq("id", ticket_id).execute()
+        
+        # Log classification for monitoring
+        await self._log_classification(ticket_id, classification, department_id)
+        
+        # Log response time if auto-resolved
+        if auto_resolve:
+            await self._log_response_time(ticket_id, now, 0, "auto")
         
         # Log AI operation
         await self._log_ai_operation(ticket_id, classification, answer_result)
@@ -132,6 +141,48 @@ class TicketService:
             "auto_resolve": auto_resolve,
             "suggested_response": answer_result["answer"] if auto_resolve else None
         }
+    
+    async def _log_classification(self, ticket_id: str, classification: Dict, department_id: Optional[str]):
+        """Log classification for monitoring"""
+        try:
+            dept_name = classification.get("department", "unknown")
+            log_data = {
+                "ticket_id": ticket_id,
+                "predicted_category": classification.get("category"),
+                "predicted_department": dept_name,
+                "predicted_priority": classification.get("priority"),
+                "confidence_score": classification.get("confidence", 0.0)
+            }
+            self.supabase_admin.table("classification_feedback").insert(log_data).execute()
+        except Exception as e:
+            print(f"Failed to log classification: {e}")
+    
+    async def _log_response_time(self, ticket_id: str, response_time: datetime, response_time_seconds: int, response_type: str):
+        """Log response time for monitoring"""
+        try:
+            log_data = {
+                "ticket_id": ticket_id,
+                "first_response_at": response_time.isoformat(),
+                "response_time_seconds": response_time_seconds,
+                "response_type": response_type
+            }
+            self.supabase_admin.table("response_times").insert(log_data).execute()
+        except Exception as e:
+            print(f"Failed to log response time: {e}")
+    
+    async def _log_routing_error(self, ticket_id: str, initial_department_id: Optional[str], correct_department_id: Optional[str], routed_by: Optional[str], error_type: str):
+        """Log routing error for monitoring"""
+        try:
+            log_data = {
+                "ticket_id": ticket_id,
+                "initial_department_id": initial_department_id,
+                "correct_department_id": correct_department_id,
+                "routed_by": routed_by,
+                "error_type": error_type
+            }
+            self.supabase_admin.table("routing_errors").insert(log_data).execute()
+        except Exception as e:
+            print(f"Failed to log routing error: {e}")
     
     async def _log_ai_operation(self, ticket_id: str, classification: Dict, answer_result: Dict):
         """Log AI operation for analytics"""

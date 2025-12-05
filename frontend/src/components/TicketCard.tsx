@@ -1,7 +1,7 @@
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
-import { Clock, Zap } from 'lucide-react'
+import { Clock, Zap, MessageCircle, Phone, Mail, Globe, User } from 'lucide-react'
 
 interface TicketCardProps {
   ticket: any
@@ -44,13 +44,44 @@ export default function TicketCard({ ticket, onClick }: TicketCardProps) {
     }
   }
 
+  const getSourceIcon = (source: string) => {
+    switch (source) {
+      case 'telegram':
+        return <MessageCircle className="w-3 h-3" />
+      case 'whatsapp':
+        return <Phone className="w-3 h-3" />
+      case 'email':
+        return <Mail className="w-3 h-3" />
+      case 'portal':
+      case 'chat':
+        return <Globe className="w-3 h-3" />
+      case 'phone':
+      case 'call_agent':
+        return <Phone className="w-3 h-3" />
+      default:
+        return <User className="w-3 h-3" />
+    }
+  }
+
+  const getSourceLabel = (source: string) => {
+    return t(`tickets.source.${source}`, source)
+  }
+
   return (
     <div 
       className={`${getPriorityColor(ticket.priority)} bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer border-l-4 h-full flex flex-col`}
       onClick={onClick}
     >
       <div className="flex justify-between items-center mb-2">
-        <span className="text-xs text-gray-500 font-mono">#{ticket.id.slice(0, 8)}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500 font-mono">#{ticket.id.slice(0, 8)}</span>
+          {ticket.source && (
+            <span className="flex items-center gap-1 text-xs text-gray-600" title={getSourceLabel(ticket.source)}>
+              {getSourceIcon(ticket.source)}
+              <span className="hidden sm:inline">{getSourceLabel(ticket.source)}</span>
+            </span>
+          )}
+        </div>
         <span className={`px-2 py-1 rounded text-xs font-medium uppercase ${getStatusColor(ticket.status)}`}>
           {t(`tickets.${ticket.status}`, ticket.status)}
         </span>

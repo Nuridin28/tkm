@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { MessageCircle, Phone, Mail, Globe, User } from 'lucide-react'
 import { getTicket, updateTicket, acceptTicket, completeRemote } from '../services/api'
 import TicketTimeline from '../components/TicketTimeline'
 import AiAssistantPanel from '../components/AiAssistantPanel'
@@ -9,8 +11,32 @@ import '../styles/TicketDetail.css'
 export default function TicketDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [ticket, setTicket] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+
+  const getSourceIcon = (source: string) => {
+    switch (source) {
+      case 'telegram':
+        return <MessageCircle className="w-4 h-4" />
+      case 'whatsapp':
+        return <Phone className="w-4 h-4" />
+      case 'email':
+        return <Mail className="w-4 h-4" />
+      case 'portal':
+      case 'chat':
+        return <Globe className="w-4 h-4" />
+      case 'phone':
+      case 'call_agent':
+        return <Phone className="w-4 h-4" />
+      default:
+        return <User className="w-4 h-4" />
+    }
+  }
+
+  const getSourceLabel = (source: string) => {
+    return t(`tickets.source.${source}`, source)
+  }
 
   useEffect(() => {
     if (id) {
@@ -67,9 +93,15 @@ export default function TicketDetail() {
           <div className="ticket-info">
             <SLAClock ticket={ticket} />
             <div className="ticket-meta">
-              <span>Статус: {ticket.status}</span>
-              <span>Приоритет: {ticket.priority}</span>
-              <span>Категория: {ticket.category}</span>
+              <span>{t('tickets.status')}: {t(`tickets.${ticket.status}`, ticket.status)}</span>
+              <span>{t('tickets.priority')}: {t(`tickets.${ticket.priority}`, ticket.priority)}</span>
+              {ticket.category && <span>{t('tickets.category', 'Категория')}: {ticket.category}</span>}
+              {ticket.source && (
+                <span className="flex items-center gap-1">
+                  {t('tickets.source.label', 'Источник')}: {getSourceIcon(ticket.source)}
+                  {getSourceLabel(ticket.source)}
+                </span>
+              )}
             </div>
             <div className="ticket-description">
               <h3>Описание</h3>
