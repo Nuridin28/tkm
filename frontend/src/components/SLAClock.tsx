@@ -27,7 +27,7 @@ export default function SLAClock({ ticket }: SLAClockProps) {
     }
 
     updateTimer()
-    const interval = setInterval(updateTimer, 60000) // Update every minute
+    const interval = setInterval(updateTimer, 60000)
 
     return () => clearInterval(interval)
   }, [ticket.sla_accept_deadline])

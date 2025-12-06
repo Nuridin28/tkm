@@ -1,7 +1,3 @@
-"""
-ИИ Help Desk - FastAPI Backend
-Main application entry point
-"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -13,11 +9,8 @@ from app.core.database import init_db
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifespan events"""
-    # Startup
     await init_db()
     yield
-    # Shutdown
     pass
 
 
@@ -28,16 +21,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Временно разрешаем все порты для разработки
-    allow_credentials=False,  # Должно быть False при allow_origins=["*"]
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include routers
 app.include_router(api_router, prefix="/api")
 
 

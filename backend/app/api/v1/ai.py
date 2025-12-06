@@ -1,6 +1,3 @@
-"""
-AI API endpoints
-"""
 from fastapi import APIRouter, HTTPException, Depends
 from app.models.schemas import AIProcessRequest, AIProcessResponse, AISearchRequest
 from app.services.ticket_service import ticket_service
@@ -16,7 +13,6 @@ async def process_ticket_with_ai(
     request: AIProcessRequest,
     user: Dict[str, Any] = Depends(get_current_user)
 ) -> AIProcessResponse:
-    """Process ticket with AI (classification, routing, answer generation)"""
     try:
         result = await ticket_service.process_with_ai(request.ticket_id)
         return AIProcessResponse(**result)
@@ -31,7 +27,6 @@ async def search_kb(
     request: AISearchRequest,
     user: Dict[str, Any] = Depends(get_current_user)
 ) -> List[Dict[str, Any]]:
-    """Search knowledge base using RAG"""
     try:
         results = await ai_service.retrieve_kb(request.query, k=request.k)
         return results

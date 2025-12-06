@@ -10,39 +10,36 @@ export default function Dashboard() {
   const lastRoleRef = useRef<string | null>(null)
 
   useEffect(() => {
-    console.log('Dashboard useEffect:', { 
-      loading, 
-      user: !!user, 
-      userProfile: !!userProfile, 
+    console.log('Dashboard useEffect:', {
+      loading,
+      user: !!user,
+      userProfile: !!userProfile,
       role: userProfile?.role,
       redirectAttempted: redirectAttemptedRef.current,
       currentPath: location.pathname
     })
-    
+
     if (loading) {
       console.log('Still loading auth...')
       return
     }
-    
+
     if (!user) {
       console.log('No user, redirecting to login')
       navigate('/login', { replace: true })
       return
     }
 
-    // Если уже не на странице /dashboard, не делаем редирект
     if (location.pathname !== '/dashboard') {
       console.log('Already redirected, current path:', location.pathname)
       return
     }
 
-    // Если редирект уже был выполнен, не делаем его снова
     if (redirectAttemptedRef.current) {
       console.log('Redirect already attempted, skipping')
       return
     }
 
-    // If no profile after 3 seconds, redirect anyway (fallback)
     if (!userProfile) {
       console.log('User exists but no profile yet, waiting...')
       const timer = setTimeout(() => {
@@ -57,8 +54,7 @@ export default function Dashboard() {
 
     const role = userProfile.role
     const normalizedRole = role?.toLowerCase()?.trim()
-    
-    // Если роль не изменилась и редирект уже был, не делаем его снова
+
     if (lastRoleRef.current === normalizedRole && redirectAttemptedRef.current) {
       console.log('Role unchanged and redirect already attempted, skipping')
       return
@@ -67,12 +63,10 @@ export default function Dashboard() {
     console.log('✅ User profile:', userProfile)
     console.log('✅ Redirecting based on role:', role, 'Type:', typeof role)
     console.log('✅ Normalized role:', normalizedRole)
-    
-    // Сохраняем роль и помечаем редирект как выполненный
+
     lastRoleRef.current = normalizedRole
     redirectAttemptedRef.current = true
-    
-    // Redirect based on role
+
     if (normalizedRole === 'admin' || normalizedRole === 'supervisor') {
       console.log('→ Redirecting to /admin (admin/supervisor)')
       navigate('/admin', { replace: true })
@@ -104,7 +98,7 @@ export default function Dashboard() {
   }
 
   if (!user) {
-    return null // Will redirect to login
+    return null
   }
 
   if (!userProfile) {

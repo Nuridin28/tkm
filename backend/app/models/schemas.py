@@ -1,6 +1,3 @@
-"""
-Pydantic schemas for request/response models
-"""
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -45,7 +42,6 @@ class UserRole(str, Enum):
     MANAGER = "manager"
 
 
-# Request schemas
 class IngestRequest(BaseModel):
     source: TicketSource
     client_id: Optional[str] = None
@@ -73,7 +69,6 @@ class AISearchRequest(BaseModel):
     k: int = 5
 
 
-# Response schemas
 class AIProcessResponse(BaseModel):
     ticket_id: str
     language: str
@@ -204,9 +199,8 @@ class DepartmentResponse(BaseModel):
     updated_at: Optional[str] = None
 
 
-# Public chat schemas
 class PublicChatMessage(BaseModel):
-    role: str  # "user" or "assistant"
+    role: str
     content: str
     timestamp: Optional[datetime] = None
 
@@ -214,7 +208,7 @@ class PublicChatMessage(BaseModel):
 class PublicChatRequest(BaseModel):
     message: str
     conversation_history: List[PublicChatMessage] = []
-    contact_info: Optional[Dict[str, str]] = None  # {"phone": "...", "email": "..."}
+    contact_info: Optional[Dict[str, str]] = None
 
 
 class SourceInfo(BaseModel):
@@ -226,14 +220,14 @@ class SourceInfo(BaseModel):
 
 class PublicChatResponse(BaseModel):
     response: str
-    answer: Optional[str] = None  # Основной ответ (для совместимости с call_helper)
-    can_answer: bool = True  # Может ли ИИ ответить на вопрос
-    needs_clarification: bool = False  # Нужны ли уточнения
-    should_create_ticket: bool = False  # Нужно ли создать тикет
-    ticket_draft: Optional[Dict[str, Any]] = None  # Драфт тикета если нужен
+    answer: Optional[str] = None
+    can_answer: bool = True
+    needs_clarification: bool = False
+    should_create_ticket: bool = False
+    ticket_draft: Optional[Dict[str, Any]] = None
     conversation_history: List[PublicChatMessage] = []
-    sources: Optional[List[SourceInfo]] = []  # Источники из RAG
-    confidence: Optional[float] = None  # Уверенность в ответе
-    ticketCreated: Optional[bool] = False  # Создан ли тикет
-    requiresClientType: Optional[bool] = False  # Требуется ли определение типа клиента
+    sources: Optional[List[SourceInfo]] = []
+    confidence: Optional[float] = None
+    ticketCreated: Optional[bool] = False
+    requiresClientType: Optional[bool] = False
 

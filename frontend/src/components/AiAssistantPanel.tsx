@@ -136,7 +136,7 @@ export default function AiAssistantPanel({ ticket, onClassificationUpdate }: AiA
         </div>
       )}
 
-      {/* Classification Approval */}
+      {}
       <div className="ai-section classification-section">
         <h4>Классификация</h4>
         <div className="classification-info">

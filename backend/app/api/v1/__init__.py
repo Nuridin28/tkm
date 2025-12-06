@@ -1,6 +1,3 @@
-"""
-API v1 Router
-"""
 from fastapi import APIRouter
 from app.api.v1 import ingest, tickets, ai, admin, users, departments, telegram, whatsapp, public_chat, bots, monitoring
 

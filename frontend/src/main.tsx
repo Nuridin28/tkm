@@ -6,15 +6,14 @@ import App from './App'
 import './index.css'
 import './i18n/config'
 
-// Настройка React Query
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30000, // 30 секунд по умолчанию
-      gcTime: 5 * 60 * 1000, // 5 минут в кэше
-      refetchOnWindowFocus: false, // Не обновлять при фокусе окна
-      refetchOnMount: false, // Не обновлять если данные свежие
-      retry: 1, // Повторить только 1 раз при ошибке
+      staleTime: 30000,
+      gcTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      retry: 1,
     },
   },
 })

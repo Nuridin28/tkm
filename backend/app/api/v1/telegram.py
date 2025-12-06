@@ -1,6 +1,3 @@
-"""
-Telegram Bot API endpoints with RAG integration
-"""
 from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
@@ -17,11 +14,9 @@ from openai import OpenAI
 
 router = APIRouter()
 
-# Инициализация OpenAI клиента
 _openai_client = None
 
 def get_openai_client():
-    """Get OpenAI client instance"""
     global _openai_client
     if _openai_client is None:
         api_key = str(settings.OPENAI_API_KEY).strip()
@@ -32,13 +27,11 @@ def get_openai_client():
 
 
 class AnalyzeMessageRequest(BaseModel):
-    """Request for message analysis"""
     text: str
     contact_info: Optional[Dict[str, Any]] = None
 
 
 class AnalyzeMessageResponse(BaseModel):
-    """Response for message analysis"""
     can_answer: bool
     answer: Optional[str] = None
     category: Optional[str] = None
@@ -49,7 +42,6 @@ class AnalyzeMessageResponse(BaseModel):
 
 
 class CreateTelegramTicketRequest(BaseModel):
-    """Request for creating ticket from Telegram"""
     source: str = "telegram"
     subject: str
     text: str
@@ -60,10 +52,8 @@ class CreateTelegramTicketRequest(BaseModel):
 
 
 def verify_telegram_api_key(api_key: Optional[str] = Header(None, alias="X-Telegram-API-Key")) -> bool:
-    """Verify Telegram bot API key"""
     expected_key = settings.TELEGRAM_BOT_API_KEY
     if not expected_key:
-        # Если ключ не настроен, разрешаем (для разработки)
         return True
     if not api_key:
         raise HTTPException(status_code=401, detail="Missing API key")
@@ -78,34 +68,24 @@ async def analyze_message(
     api_key: Optional[str] = Header(None, alias="X-Telegram-API-Key"),
     conversation_history: Optional[List[Dict[str, Any]]] = None
 ) -> AnalyzeMessageResponse:
-    """
-    Analyze message using RAG/AI (same logic as public_chat)
-    Returns whether we can answer immediately or need to create a ticket
-    """
-    # Verify API key
     verify_telegram_api_key(api_key)
-    
+
     start_time = time.time()
-    
+
     try:
-        # Normalize message
         message = str(request.text).strip()
         message = message.encode('utf-8', errors='ignore').decode('utf-8')
-        
-        # Build conversation history
+
         if conversation_history is None:
             conversation_history = []
-        
-        # Extract client type
+
         client_type = extract_client_type(conversation_history)
         is_corporate = client_type == "corporate" if client_type else False
-        
-        # Create embedding for query
+
         try:
             query_emb = await embed_query(message)
         except Exception as e:
             print(f"Error creating embedding: {e}")
-            # Fallback to simple classification
             classification = await ai_service.classify_ticket(message, "")
             return AnalyzeMessageResponse(
                 can_answer=False,
@@ -115,8 +95,7 @@ async def analyze_message(
                 department=classification.get("department", "TechSupport"),
                 subject=message[:50] + "..." if len(message) > 50 else message
             )
-        
-        # Search in knowledge base using RAG
+
         supabase = get_supabase_admin()
         kazakhtelecom_result = supabase.rpc(
             "match_documents",
@@ -126,18 +105,16 @@ async def analyze_message(
                 "filter": {"source_type": "kazakhtelecom"}
             }
         ).execute()
-        
+
         kazakhtelecom_chunks = kazakhtelecom_result.data or []
-        
-        # Build context
+
         context = ""
         max_similarity = 0.0
         if kazakhtelecom_chunks:
-            # Filter chunks with reasonable similarity (>= 0.1) to avoid noise
             filtered_chunks = [chunk for chunk in kazakhtelecom_chunks if chunk.get('similarity', 0.0) >= 0.1]
             if not filtered_chunks:
-                filtered_chunks = kazakhtelecom_chunks[:3]  # Use top 3 if all are below 0.1
-            
+                filtered_chunks = kazakhtelecom_chunks[:3]
+
             context += "ИНФОРМАЦИЯ ИЗ ДОКУМЕНТА КАЗАХТЕЛЕКОМ:\n\n"
             for i, chunk in enumerate(filtered_chunks):
                 page_info = f"(Страница {chunk.get('metadata', {}).get('page', '?')})" if chunk.get('metadata', {}).get('page') else ""
@@ -145,8 +122,7 @@ async def analyze_message(
                 if similarity > max_similarity:
                     max_similarity = similarity
                 context += f"[Информация {i + 1}] {page_info} (релевантность: {similarity:.2f})\n{chunk.get('content', '')}\n\n"
-        
-        # Generate answer using OpenAI with RAG context
+
         if context:
             system_prompt = f"""Ты часть системы Help Desk Казахтелеком. Твоя основная задача — отвечать пользователю через RAG по базе знаний.
 
@@ -160,7 +136,7 @@ async def analyze_message(
 7. Для информационных вопросов (тарифы, условия, возможности) старайся дать полный ответ на основе доступной информации
 
 ВАЖНО: Если у тебя есть информация из документации, даже если она не полностью покрывает вопрос - используй её для ответа. НЕ говори "нужно создать тикет" если можешь дать хотя бы частичный ответ на основе документации."""
-            
+
             try:
                 client = get_openai_client()
                 response = client.chat.completions.create(
@@ -172,62 +148,49 @@ async def analyze_message(
                     temperature=0.3,
                     max_tokens=500
                 )
-                
+
                 answer_text = response.choices[0].message.content.strip()
                 confidence = max_similarity if max_similarity > 0.2 else 0.1
-                
-                # Check if answer contains ticket request
+
                 import re
                 ticket_match = re.search(
                     r"\[TICKET_REQUIRED\]|создать тикет|нужен тикет|требуется тикет|обратитесь в техподдержку",
                     answer_text,
                     re.IGNORECASE
                 )
-                
-                # Check for technical issues (only real technical problems requiring intervention)
+
                 full_text_for_check = (message + " " + " ".join([m.get("content", "") for m in conversation_history])).lower()
                 is_technical_issue = bool(re.search(
                     r"роутер не работает|модем не работает|оборудование сломалось|диагностика оборудования|техническая поломка|требуется ремонт|нужен выезд|помощь специалиста на месте|замена оборудования",
                     full_text_for_check
                 ))
-                
-                # Check if it's an informational question (can be answered even with lower similarity)
+
                 is_informational = bool(re.search(
                     r"могу ли|можно ли|как|что|где|когда|сколько|какие|какой|информац|узнать|расскажи|объясни|вопрос",
                     message.lower()
                 ))
-                
-                # Determine similarity threshold based on question type
-                # For informational questions, use lower threshold (0.15 instead of 0.2)
+
                 similarity_threshold = 0.15 if is_informational else 0.2
-                
-                # Determine if we can answer
-                # Can answer if:
-                # 1. Have relevant information (similarity >= threshold)
-                # 2. Answer is meaningful (length > 20)
-                # 3. Answer doesn't explicitly request ticket
-                # 4. Not a technical issue requiring physical intervention
+
                 can_answer = (
                     max_similarity >= similarity_threshold and 
                     len(answer_text) > 20 and 
                     not ticket_match and
                     not is_technical_issue
                 )
-                
+
                 print(f"[TELEGRAM ANALYZE] Question: '{message[:50]}...'")
                 print(f"[TELEGRAM ANALYZE] max_similarity={max_similarity:.2f}, threshold={similarity_threshold:.2f}, is_informational={is_informational}, is_technical={is_technical_issue}")
                 print(f"[TELEGRAM ANALYZE] can_answer={can_answer}, answer_length={len(answer_text)}")
-                
-                # Remove ticket request from answer if present
+
                 if ticket_match:
                     answer_text = re.sub(r"\[TICKET_REQUIRED\][\s\S]*$", "", answer_text).strip()
                     answer_text = re.sub(r"создать тикет|нужен тикет|требуется тикет", "", answer_text, flags=re.IGNORECASE).strip()
-                
-                # Categorize ticket (for fallback)
+
                 categorization = categorize_ticket(message, conversation_history, client_type or "private")
-                
+
                 print(f"[TELEGRAM ANALYZE] max_similarity={max_similarity:.2f}, can_answer={can_answer}, is_technical={is_technical_issue}, has_ticket_request={bool(ticket_match)}")
-                
+
                 return AnalyzeMessageResponse(
                     can_answer=can_answer,
                     answer=answer_text if can_answer else None,
@@ -239,10 +202,9 @@ async def analyze_message(
                 )
             except Exception as e:
                 print(f"Error generating answer: {e}")
-        
-        # Fallback: no context or error
+
         categorization = categorize_ticket(message, conversation_history, client_type or "private")
-        
+
         return AnalyzeMessageResponse(
             can_answer=False,
             category=categorization.get("category"),
@@ -251,10 +213,9 @@ async def analyze_message(
             department=categorization.get("department", "TechSupport"),
             subject=message[:50] + "..." if len(message) > 50 else message
         )
-        
+
     except Exception as e:
         print(f"Error in analyze_message: {e}")
-        # В случае ошибки создаем тикет
         return AnalyzeMessageResponse(
             can_answer=False,
             priority="medium",
@@ -268,14 +229,12 @@ async def create_telegram_ticket(
     request: CreateTelegramTicketRequest,
     api_key: Optional[str] = Header(None, alias="X-Telegram-API-Key")
 ) -> Dict[str, Any]:
-    """Create ticket from Telegram bot"""
-    # Verify API key
     verify_telegram_api_key(api_key)
-    
+
     try:
         ticket_data = {
             "source": request.source,
-            "client_id": None,  # Will be created automatically if needed
+            "client_id": None,
             "subject": request.subject,
             "text": request.text,
             "incoming_meta": {
@@ -285,12 +244,11 @@ async def create_telegram_ticket(
                 "contact_info": request.contact_info
             }
         }
-        
+
         ticket = await ticket_service.create_ticket(ticket_data)
-        
-        # Process with AI
+
         ai_result = await ticket_service.process_with_ai(ticket["id"])
-        
+
         return {
             "ticket_id": ticket["id"],
             "status": "created",

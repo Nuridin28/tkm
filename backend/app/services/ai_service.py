@@ -1,6 +1,3 @@
-"""
-AI Service - OpenAI integration for classification, RAG, and answer generation
-"""
 import json
 from typing import Dict, Any, Optional, List
 from openai import OpenAI
@@ -8,11 +5,9 @@ from app.core.config import settings
 from app.core.database import get_supabase
 from langdetect import detect, LangDetectException
 
-# Ленивая инициализация клиента для избежания проблем при импорте
 _client = None
 
 def get_openai_client():
-    """Get OpenAI client instance (lazy initialization)"""
     global _client
     if _client is None:
         _client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -20,36 +15,31 @@ def get_openai_client():
 
 
 class AIService:
-    """Service for AI operations"""
-    
+
     def __init__(self):
         self.model = settings.OPENAI_MODEL
         self.embedding_model = settings.OPENAI_EMBEDDING_MODEL
-    
+
     def detect_language(self, text: str) -> str:
-        """Detect language of text"""
         try:
             lang = detect(text)
-            # Map to our supported languages
             if lang in ['ru', 'kk', 'kz']:
                 return 'ru' if lang == 'ru' else 'kz'
-            return 'ru'  # default
+            return 'ru'
         except LangDetectException:
             return 'ru'
-    
+
     def get_embedding(self, text: str) -> List[float]:
-        """Get embedding for text"""
         client = get_openai_client()
         response = client.embeddings.create(
             model=self.embedding_model,
             input=text
         )
         return response.data[0].embedding
-    
+
     async def classify_ticket(self, ticket_text: str, subject: str = "") -> Dict[str, Any]:
-        """Classify ticket using OpenAI"""
         full_text = f"Subject: {subject}\n\nDescription: {ticket_text}"
-        
+
         system_prompt = """Ты — классификатор тикетов для телеком-компании. 
 Вход — текст обращения клиента. Вывод — строго валидный JSON с полями:
 - language: "ru" или "kz"
@@ -62,9 +52,9 @@ class AIService:
 
 Если не уверен в решении — auto_resolve_candidate=false, confidence < 0.7.
 Выводи ТОЛЬКО JSON, без дополнительного текста."""
-        
+
         user_prompt = full_text
-        
+
         try:
             client = get_openai_client()
             response = client.chat.completions.create(
@@ -76,10 +66,9 @@ class AIService:
                 temperature=0.3,
                 response_format={"type": "json_object"}
             )
-            
+
             result = json.loads(response.choices[0].message.content)
-            
-            # Validate and normalize
+
             return {
                 "language": result.get("language", "ru"),
                 "category": result.get("category", "other"),
@@ -90,7 +79,6 @@ class AIService:
                 "confidence": float(result.get("confidence", 0.5))
             }
         except Exception as e:
-            # Fallback classification
             return {
                 "language": self.detect_language(ticket_text),
                 "category": "other",
@@ -100,20 +88,18 @@ class AIService:
                 "auto_resolve_candidate": False,
                 "confidence": 0.0
             }
-    
+
     async def generate_ticket_summary(self, conversation_history: List[Dict[str, Any]], user_message: str) -> str:
-        """Генерирует краткое описание проблемы из истории разговора"""
         try:
-            # Формируем контекст из истории
             history_text = ""
-            for msg in conversation_history[-5:]:  # Берем последние 5 сообщений
+            for msg in conversation_history[-5:]:
                 role = msg.get("role", "user")
                 content = msg.get("content", "")
                 if role == "user":
                     history_text += f"Клиент: {content}\n"
-            
+
             history_text += f"Клиент: {user_message}\n"
-            
+
             system_prompt = """Ты — помощник для создания краткого описания проблемы клиента для тикета техподдержки.
 
 На основе истории разговора с клиентом создай краткое, но информативное описание проблемы:
@@ -129,7 +115,7 @@ class AIService:
 "Клиент хочет узнать, как приостановить услуги связи на время."
 
 Отвечай ТОЛЬКО описанием проблемы, без дополнительных комментариев."""
-            
+
             client = get_openai_client()
             response = client.chat.completions.create(
                 model=self.model,
@@ -140,25 +126,20 @@ class AIService:
                 temperature=0.3,
                 max_tokens=200
             )
-            
+
             summary = response.choices[0].message.content.strip()
             return summary
-            
+
         except Exception as e:
             print(f"Error generating ticket summary: {e}")
-            # Fallback: используем последнее сообщение пользователя
             return user_message[:200] + ("..." if len(user_message) > 200 else "")
-    
+
     async def retrieve_kb(self, query: str, k: int = 5) -> List[Dict[str, Any]]:
-        """Retrieve relevant KB articles using RAG"""
         supabase = get_supabase()
-        
-        # Get embedding for query
+
         query_embedding = self.get_embedding(query)
-        
-        # Search in Supabase vectors (assuming embeddings table exists)
+
         try:
-            # Use Supabase vector search (pgvector)
             results = supabase.rpc(
                 'match_embeddings',
                 {
@@ -167,25 +148,24 @@ class AIService:
                     'match_count': k
                 }
             ).execute()
-            
+
             return results.data if results.data else []
         except Exception as e:
             print(f"RAG retrieval error: {e}")
             return []
-    
+
     async def generate_answer(
         self,
         ticket_text: str,
         language: str,
         kb_snippets: List[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        """Generate answer using RAG context"""
         snippets_text = ""
         if kb_snippets:
             snippets_text = "\n\nСправочные материалы:\n"
-            for snippet in kb_snippets[:3]:  # Top 3
+            for snippet in kb_snippets[:3]:
                 snippets_text += f"- {snippet.get('text_excerpt', snippet.get('content', ''))}\n"
-        
+
         system_prompt = f"""Ты — ассистент техподдержки телеком-компании.
 Используй предоставленные справочные материалы для формирования ответа.
 Сформируй ответ клиенту на языке {language} (RU или KZ), кратко (2-4 предложения), 
@@ -197,9 +177,9 @@ class AIService:
 - resolution_steps: массив шагов решения (если есть)
 - need_on_site: true/false
 - confidence: уверенность в решении (0-1)"""
-        
+
         user_prompt = f"{snippets_text}\n\nОбращение клиента:\n{ticket_text}"
-        
+
         try:
             client = get_openai_client()
             response = client.chat.completions.create(
@@ -211,7 +191,7 @@ class AIService:
                 temperature=0.5,
                 response_format={"type": "json_object"}
             )
-            
+
             result = json.loads(response.choices[0].message.content)
             return {
                 "answer": result.get("answer", ""),
@@ -226,11 +206,10 @@ class AIService:
                 "need_on_site": False,
                 "confidence": 0.0
             }
-    
+
     async def generate_summary(self, ticket_text: str, language: str = "ru") -> str:
-        """Generate short summary (1-3 sentences)"""
         prompt = f"Создай краткое резюме (1-3 предложения) на языке {language}:\n\n{ticket_text}"
-        
+
         try:
             client = get_openai_client()
             response = client.chat.completions.create(
@@ -244,6 +223,5 @@ class AIService:
             return ticket_text[:200] + "..." if len(ticket_text) > 200 else ticket_text
 
 
-# Singleton instance
 ai_service = AIService()
 

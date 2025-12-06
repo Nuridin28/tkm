@@ -44,29 +44,24 @@ export default function BotManager() {
     loadBots()
   }, [])
 
-  // Отслеживаем наличие запущенных ботов
   useEffect(() => {
     hasRunningBotsRef.current = bots.some(bot => bot.running)
   }, [bots])
 
-  // Отдельный эффект для обновления статистики в реальном времени
   useEffect(() => {
-    // Обновляем только статистику (PID, память, CPU) каждые 3 секунды
     const statsInterval = setInterval(() => {
       if (hasRunningBotsRef.current) {
-        // Обновляем только если есть запущенные боты
-        loadBots(false) // Тихое обновление без показа loading
+        loadBots(false)
       }
     }, 3000)
-    
+
     return () => clearInterval(statsInterval)
-  }, []) // Запускаем только один раз при монтировании
+  }, [])
 
   const handleStart = async (botType: string) => {
     try {
       setActionLoading(botType)
       await startBot(botType)
-      // Обновляем только после успешного действия (без показа loading)
       setTimeout(() => loadBots(false), 1000)
     } catch (error: any) {
       alert(error.response?.data?.detail || `Failed to start ${botType} bot`)
@@ -79,7 +74,6 @@ export default function BotManager() {
     try {
       setActionLoading(botType)
       await stopBot(botType)
-      // Обновляем только после успешного действия (без показа loading)
       setTimeout(() => loadBots(false), 1000)
     } catch (error: any) {
       alert(error.response?.data?.detail || `Failed to stop ${botType} bot`)
@@ -92,7 +86,6 @@ export default function BotManager() {
     try {
       setActionLoading(botType)
       await restartBot(botType)
-      // Обновляем только после успешного действия (без показа loading)
       setTimeout(() => loadBots(false), 1000)
     } catch (error: any) {
       alert(error.response?.data?.detail || `Failed to restart ${botType} bot`)
@@ -177,7 +170,7 @@ export default function BotManager() {
                 <div>
                   <h3>{getBotName(bot.type)}</h3>
                   <span className={`status-badge ${getStatusColor(bot.status)}`}>
-                    {bot.status === 'running' ? t('bots.running', 'Запущен') : 
+                    {bot.status === 'running' ? t('bots.running', 'Запущен') :
                      bot.status === 'stopped' ? t('bots.stopped', 'Остановлен') :
                      t('bots.error', 'Ошибка')}
                   </span>

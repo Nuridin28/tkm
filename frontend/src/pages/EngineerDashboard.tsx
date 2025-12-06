@@ -17,8 +17,6 @@ export default function EngineerDashboard() {
 
   const loadTickets = async () => {
     try {
-      // Инженеры видят тикеты по category (определяется по department)
-      // Backend автоматически определит category по department_id инженера
       const data = await getTickets({ status: 'in_progress' }).catch(() => [])
       setTickets(data || [])
     } catch (error) {

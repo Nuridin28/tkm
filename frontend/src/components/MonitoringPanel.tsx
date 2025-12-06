@@ -101,7 +101,7 @@ export default function MonitoringPanel() {
       </div>
 
       <div className="metrics-grid">
-        {/* Точность классификации */}
+        {}
         <div className="metric-card">
           <div className="metric-header">
             <Target className="metric-icon" />
@@ -112,7 +112,7 @@ export default function MonitoringPanel() {
           </div>
           <div className="metric-details">
             <p className="metric-stat">
-              Правильно: <strong>{metrics.classification_accuracy.correct_classifications}</strong> / 
+              Правильно: <strong>{metrics.classification_accuracy.correct_classifications}</strong> /
               <strong> {metrics.classification_accuracy.total_classifications}</strong>
             </p>
             {Object.keys(metrics.classification_accuracy.by_category).length > 0 && (
@@ -129,7 +129,7 @@ export default function MonitoringPanel() {
           </div>
         </div>
 
-        {/* Автоматические решения */}
+        {}
         <div className="metric-card">
           <div className="metric-header">
             <TrendingUp className="metric-icon" />
@@ -140,7 +140,7 @@ export default function MonitoringPanel() {
           </div>
           <div className="metric-details">
             <p className="metric-stat">
-              Авторешено: <strong>{metrics.auto_resolve_stats.total_auto_resolved}</strong> / 
+              Авторешено: <strong>{metrics.auto_resolve_stats.total_auto_resolved}</strong> /
               <strong> {metrics.auto_resolve_stats.total_tickets}</strong>
             </p>
             <p className="metric-stat">
@@ -160,7 +160,7 @@ export default function MonitoringPanel() {
           </div>
         </div>
 
-        {/* Время ответа */}
+        {}
         <div className="metric-card">
           <div className="metric-header">
             <Clock className="metric-icon" />
@@ -190,7 +190,7 @@ export default function MonitoringPanel() {
           </div>
         </div>
 
-        {/* Ошибки маршрутизации */}
+        {}
         <div className="metric-card">
           <div className="metric-header">
             <AlertTriangle className="metric-icon" />

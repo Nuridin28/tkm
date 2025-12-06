@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { 
-  useDepartments, 
-  useCreateDepartment, 
-  useUpdateDepartment, 
-  useDeleteDepartment 
+import {
+  useDepartments,
+  useCreateDepartment,
+  useUpdateDepartment,
+  useDeleteDepartment
 } from '../hooks/useDepartments'
 import { useTranslation } from 'react-i18next'
 import { Building, Plus, Edit, Trash2, X, Loader2, Save, CheckCircle2 } from 'lucide-react'
@@ -49,7 +49,7 @@ export default function DepartmentManager() {
 
   const handleDelete = async (id: string) => {
     if (!confirm(t('departments.delete') + '?')) return
-    
+
     setError('')
     try {
       await deleteMutation.mutateAsync(id)
@@ -97,7 +97,7 @@ export default function DepartmentManager() {
           {success}
         </div>
       )}
-      
+
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
           {error}
@@ -159,13 +159,13 @@ export default function DepartmentManager() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
                 {error}
               </div>
             )}
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -180,7 +180,7 @@ export default function DepartmentManager() {
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   {t('departments.description')}
@@ -194,7 +194,7 @@ export default function DepartmentManager() {
                 />
               </div>
             </div>
-            
+
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => {
@@ -217,7 +217,7 @@ export default function DepartmentManager() {
                 ) : (
                   <Save className="w-4 h-4" />
                 )}
-                {createMutation.isPending || updateMutation.isPending 
+                {createMutation.isPending || updateMutation.isPending
                   ? t('common.loading')
                   : editingDept ? t('common.save') : t('common.create')}
               </button>

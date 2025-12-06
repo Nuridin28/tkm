@@ -22,7 +22,6 @@ export default function ChatInterface() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [userId] = useState(() => {
-    // Generate or retrieve user ID (you can implement proper user management)
     if (typeof window !== "undefined") {
       let id = localStorage.getItem("user_id");
       if (!id) {
@@ -76,7 +75,6 @@ export default function ChatInterface() {
         throw new Error(data.error);
       }
 
-      // Handle client type request
       if (data.requiresClientType) {
         const assistantMessage: Message = {
           role: "assistant",
@@ -118,7 +116,7 @@ export default function ChatInterface() {
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Header */}
+      {}
       <div className="bg-white/80 backdrop-blur-md shadow-lg border-b border-gray-200/50 px-6 py-5">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center gap-3">
@@ -137,7 +135,7 @@ export default function ChatInterface() {
         </div>
       </div>
 
-      {/* Messages */}
+      {}
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="max-w-4xl mx-auto space-y-6">
           {messages.length === 0 && (
@@ -151,7 +149,7 @@ export default function ChatInterface() {
               <p className="text-gray-600 mb-8 max-w-md mx-auto">
                 Задайте вопрос об услугах Казахтелеком, и я помогу найти нужную информацию или создам тикет для наших специалистов
               </p>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto">
                 {exampleQuestions.map((question, idx) => (
                   <button
@@ -176,7 +174,7 @@ export default function ChatInterface() {
                   <span className="text-white text-sm">📞</span>
                 </div>
               )}
-              
+
               <div
                 className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-5 py-4 shadow-lg ${
                   message.role === "user"
@@ -198,7 +196,7 @@ export default function ChatInterface() {
                         li: ({...props}: any) => <li className="ml-2" {...props} />,
                         strong: ({...props}: any) => <strong className="font-semibold text-gray-900" {...props} />,
                         em: ({...props}: any) => <em className="italic" {...props} />,
-                        code: ({inline, ...props}: any) => 
+                        code: ({inline, ...props}: any) =>
                           inline ? (
                             <code className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono text-gray-800" {...props} />
                           ) : (
@@ -215,7 +213,7 @@ export default function ChatInterface() {
                 ) : (
                   <div className="whitespace-pre-wrap leading-relaxed">{message.content}</div>
                 )}
-                
+
                 {message.sources && message.sources.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-gray-200/50">
                     <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
@@ -223,8 +221,8 @@ export default function ChatInterface() {
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {message.sources.slice(0, 3).map((source, sIdx) => (
-                        <div 
-                          key={sIdx} 
+                        <div
+                          key={sIdx}
                           className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 rounded-lg text-xs text-gray-600 border border-gray-200"
                         >
                           {source.page && (
@@ -270,7 +268,7 @@ export default function ChatInterface() {
         </div>
       </div>
 
-      {/* Input */}
+      {}
       <div className="bg-white/80 backdrop-blur-md border-t border-gray-200/50 px-4 py-5 shadow-2xl">
         <div className="max-w-4xl mx-auto">
           <form onSubmit={handleSubmit} className="relative">

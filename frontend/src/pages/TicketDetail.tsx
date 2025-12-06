@@ -53,7 +53,6 @@ export default function TicketDetail() {
       setTicket(data)
     } catch (error: any) {
       console.error('Failed to load ticket:', error)
-      // Если ошибка доступа (403), показываем сообщение
       if (error?.response?.status === 403) {
         alert('У вас нет доступа к этому тикету. Он принадлежит другому департаменту.')
         navigate('/dashboard')
@@ -169,7 +168,7 @@ export default function TicketDetail() {
         </div>
       </div>
 
-      {/* Chat History Modal */}
+      {}
       {showChatHistory && (
         <div className="chat-history-modal" onClick={() => setShowChatHistory(false)}>
           <div className="chat-history-content" onClick={(e) => e.stopPropagation()}>

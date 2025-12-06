@@ -47,8 +47,6 @@ export default function TicketActions({ ticket, onUpdate, departments = [], user
 
   const loading = deleteTicketMutation.isPending || assignTicketMutation.isPending
 
-  // Скрываем кнопку назначения, если тикет уже подтвержден (статус in_progress)
-  // Тикет автоматически назначается в отдел при подтверждении классификации
   const canAssign = ticket.status === 'new' || ticket.status === 'accepted'
 
   return (
@@ -81,13 +79,13 @@ export default function TicketActions({ ticket, onUpdate, departments = [], user
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
                 {error}
               </div>
             )}
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -105,7 +103,7 @@ export default function TicketActions({ ticket, onUpdate, departments = [], user
                   ))}
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <User className="w-4 h-4 inline mr-1" />
@@ -123,7 +121,7 @@ export default function TicketActions({ ticket, onUpdate, departments = [], user
                 </select>
               </div>
             </div>
-            
+
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowAssignModal(false)}
@@ -153,18 +151,18 @@ export default function TicketActions({ ticket, onUpdate, departments = [], user
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <p className="text-gray-700 mb-2">
               {t('tickets.delete')} "{ticket.subject}"?
             </p>
             <p className="text-sm text-red-600 mb-4">{t('common.error')}</p>
-            
+
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
                 {error}
               </div>
             )}
-            
+
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}

@@ -21,35 +21,29 @@ async function embedQuery(query: string) {
   return resp.data[0].embedding;
 }
 
-// Extract client type from conversation history
 function extractClientType(history: any[]): "corporate" | "private" | null {
   const fullText = history.map(m => m.content).join(" ").toLowerCase();
-  
-  // Check for explicit "yes" or corporate indicators
+
   const corporateKeywords = [
-    "да", "корпоратив", "корпоративный", "корпоративный клиент", 
+    "да", "корпоратив", "корпоративный", "корпоративный клиент",
     "бизнес", "компания", "организация", "юридическое лицо", "юр. лицо"
   ];
-  
-  // Check for explicit "no" or negative answers
+
   const negativeKeywords = [
     "нет", "не корпоратив", "не являюсь корпоративным", "не корпоративный"
   ];
-  
-  // First check for explicit negative answers (no = private)
+
   for (const keyword of negativeKeywords) {
     if (fullText.includes(keyword)) return "private";
   }
-  
-  // Then check for corporate indicators (yes or corporate keywords = corporate)
+
   for (const keyword of corporateKeywords) {
     if (fullText.includes(keyword)) return "corporate";
   }
-  
+
   return null;
 }
 
-// Categorize ticket based on content
 function categorizeTicket(message: string, history: any[], clientType: "corporate" | "private"): {
   category: string;
   subcategory: string;
@@ -57,14 +51,12 @@ function categorizeTicket(message: string, history: any[], clientType: "corporat
   priority: "critical" | "high" | "medium" | "low";
 } {
   const fullText = (message + " " + history.map(m => m.content).join(" ")).toLowerCase();
-  
-  // Determine category
+
   let category = "other";
   let subcategory = "";
   let department = "TechSupport";
   let priority: "critical" | "high" | "medium" | "low" = "medium";
-  
-  // Network issues
+
   if (fullText.match(/интернет|интернета|подключ|соединен|связь|сеть|network|internet|wi-fi|wifi/)) {
     category = "network";
     if (fullText.match(/скорост|медлен|тормоз|lag|speed/)) {
@@ -80,7 +72,6 @@ function categorizeTicket(message: string, history: any[], clientType: "corporat
       subcategory = "general_network";
     }
   }
-  // Telephony
   else if (fullText.match(/телефон|звонок|звонки|telephony|call|phone/)) {
     category = "telephony";
     if (fullText.match(/не звон|не работает|не могу позвонить/)) {
@@ -90,7 +81,6 @@ function categorizeTicket(message: string, history: any[], clientType: "corporat
       subcategory = "general_telephony";
     }
   }
-  // TV
   else if (fullText.match(/телевизор|тв|tv|канал|каналы|программа/)) {
     category = "tv";
     if (fullText.match(/не работает|нет сигнал|не показывает/)) {
@@ -100,7 +90,6 @@ function categorizeTicket(message: string, history: any[], clientType: "corporat
       subcategory = "general_tv";
     }
   }
-  // Billing
   else if (fullText.match(/оплат|платеж|счет|биллинг|billing|тариф|цена|стоимость|деньги/)) {
     category = "billing";
     department = "Billing";
@@ -111,7 +100,6 @@ function categorizeTicket(message: string, history: any[], clientType: "corporat
       subcategory = "general_billing";
     }
   }
-  // Equipment
   else if (fullText.match(/оборудован|роутер|модем|устройств|equipment|device/)) {
     category = "equipment";
     if (fullText.match(/не работает|сломал|поломк|замен/)) {
@@ -121,8 +109,7 @@ function categorizeTicket(message: string, history: any[], clientType: "corporat
       subcategory = "general_equipment";
     }
   }
-  
-  // Adjust priority based on keywords
+
   if (fullText.match(/срочно|критич|критическ|urgent|critical|не работает|полностью/)) {
     priority = "critical";
   } else if (fullText.match(/важно|important|проблем|problem/)) {
@@ -130,16 +117,14 @@ function categorizeTicket(message: string, history: any[], clientType: "corporat
   } else if (fullText.match(/вопрос|информац|уточнени|question/)) {
     priority = "low";
   }
-  
-  // Corporate clients get high priority (unless already critical)
+
   if (clientType === "corporate" && priority !== "critical") {
     priority = "high";
   }
-  
+
   return { category, subcategory, department, priority };
 }
 
-// Create ticket in Supabase
 async function createTicket(
   userId: string,
   clientType: "corporate" | "private",
@@ -169,12 +154,12 @@ async function createTicket(
     })
     .select()
     .single();
-  
+
   if (error) {
     console.error("Error creating ticket:", error);
     throw error;
   }
-  
+
   return data;
 }
 
@@ -193,29 +178,23 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Check if client type is known
     const clientType = extractClientType(conversationHistory);
-    
-    // If client type is unknown, ask user
+
     if (!clientType) {
       return new Response(JSON.stringify({
         answer: "Вы корпоративный клиент?",
         sources: [],
         requiresClientType: true
-      }), { 
-        status: 200, 
+      }), {
+        status: 200,
         headers: { "content-type": "application/json" }
       });
     }
-    
-    // If user answered "no" (not corporate), treat as regular RAG without client type
-    // Only use clientType for corporate clients (for priority in tickets)
+
     const isCorporate = clientType === "corporate";
 
-    // 1) Embed the query
     const queryEmb = await embedQuery(message);
 
-    // 2) Retrieve from Kazakhtelecom PDF - get 6 most relevant chunks
     const kazakhtelecomResult = await supabase.rpc("match_documents", {
       query_embedding: queryEmb,
       match_count: 6,
@@ -226,7 +205,6 @@ export async function POST(req: NextRequest) {
 
     const kazakhtelecomChunks = kazakhtelecomResult.data || [];
 
-    // 3) Build the context
     let context = "";
 
     if (kazakhtelecomChunks.length > 0) {
@@ -245,8 +223,6 @@ export async function POST(req: NextRequest) {
       }), { status: 200, headers: { "content-type": "application/json" }});
     }
 
-    // 4) Build system prompt for Help Desk assistant with ticket logic
-    // Only mention client type for corporate clients
     const systemPrompt = `Ты часть системы Help Desk Казахтелеком. Твоя основная задача — отвечать пользователю через RAG по базе знаний.
 
 ${isCorporate ? "ТИП КЛИЕНТА: Корпоративный клиент\n\n" : ""}ВАЖНЫЕ ПРАВИЛА:
@@ -274,7 +250,7 @@ ${isCorporate ? "ТИП КЛИЕНТА: Корпоративный клиент\
   - Стоимость: X тг/месяц
   - Трафик: ...
   - Звонки: ...
-  
+
 - Для инструкций используй нумерованный список с четкими шагами
 - Для рекомендаций используй маркированные списки с подпунктами
 - НЕ указывай источники в тексте ответа - они будут добавлены автоматически
@@ -319,7 +295,7 @@ ${isCorporate ? "ТИП КЛИЕНТА: Корпоративный клиент\
      CONFIDENCE: <число от 0.0 до 1.0>
      NEEDS_TICKET: true
      REASON: <краткое объяснение, почему нужен тикет>
-   
+
    - В ответе пользователю напиши: "Хорошо, ваш запрос зарегистрирован. Наши специалисты свяжутся с вами."
 
 3. Если информации в предоставленных фрагментах недостаточно, но вопрос простой:
@@ -386,34 +362,30 @@ ${isCorporate ? "ТИП КЛИЕНТА: Корпоративный клиент\
 
 ---
 
-ВАЖНО: 
+ВАЖНО:
 - Всегда используй Markdown для форматирования
 - Разделяй информацию на логические блоки
 - Используй списки для перечисления
 - Выделяй важную информацию жирным текстом
 - Всегда анализируй, можно ли ответить автоматически или требуется создание тикета.`;
 
-    // 6) Build messages with conversation history
     const messages: any[] = [
       { role: "system", content: systemPrompt }
     ];
 
-    // Add conversation history (last 10 messages to keep more context for questioning)
     const recentHistory = conversationHistory.slice(-10);
     for (const msg of recentHistory) {
       messages.push({ role: msg.role, content: msg.content });
     }
 
-    // Build conversation history text for ticket content
     const conversationText = conversationHistory
       .map((msg: any) => `${msg.role === "user" ? "Пользователь" : "Ассистент"}: ${msg.content}`)
       .join("\n");
     const fullContent = `${conversationText}\nПользователь: ${message}`;
 
-    // Add current query with context
     messages.push({
       role: "user",
-      content: `ВОПРОС: ${message}\n\n${context}\n\nОТВЕТЬ на вопрос, используя ТОЛЬКО информацию из предоставленных выше фрагментов документации Казахтелеком. 
+      content: `ВОПРОС: ${message}\n\n${context}\n\nОТВЕТЬ на вопрос, используя ТОЛЬКО информацию из предоставленных выше фрагментов документации Казахтелеком.
 
 ВАЖНО ПО ФОРМАТИРОВАНИЮ:
 - НЕ пиши сплошным текстом - всегда используй структурированное форматирование
@@ -427,7 +399,6 @@ ${isCorporate ? "ТИП КЛИЕНТА: Корпоративный клиент\
 Если информации недостаточно или требуется вмешательство сотрудника - укажи [TICKET_REQUIRED] с CONFIDENCE и REASON. НЕ указывай источники в тексте ответа - они будут добавлены автоматически.`
     });
 
-    // 7) Get completion from OpenAI
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.4,
@@ -436,14 +407,11 @@ ${isCorporate ? "ТИП КЛИЕНТА: Корпоративный клиент\
     });
 
     let answer = completion.choices[0]?.message?.content ?? "";
-    
-    // Check max similarity to determine if we have relevant information
+
     const maxSimilarity = kazakhtelecomChunks.length > 0
       ? Math.max(...kazakhtelecomChunks.map((c: any) => c.similarity || 0))
       : 0;
-    
-    // For non-corporate clients, remove any mentions of client type from answer
-    // Treat them as regular RAG without client type restrictions
+
     if (!isCorporate) {
       const clientTypeMentions = [
         "для частных лиц", "для частных клиентов", "частным лицам", "частных лиц", "частных клиентов",
@@ -451,60 +419,48 @@ ${isCorporate ? "ТИП КЛИЕНТА: Корпоративный клиент\
         "частное лицо", "физическое лицо", "физ. лицо",
         "для корпоративных", "корпоративным", "корпоративных клиентов", "корпоративный клиент"
       ];
-      
+
       for (const mention of clientTypeMentions) {
         const regex = new RegExp(mention, "gi");
         answer = answer.replace(regex, "").trim();
       }
-      // Clean up multiple spaces and empty lines
       answer = answer.replace(/\s+/g, " ").replace(/\n\s*\n+/g, "\n").trim();
     }
-    
-    // Remove sources block from answer if present
+
     answer = answer.replace(/\n\n---\s*\n\nИсточники:[\s\S]*$/i, "").trim();
     answer = answer.replace(/\n\nИсточники:[\s\S]*$/i, "").trim();
     answer = answer.replace(/---\s*\n\nИсточники:[\s\S]*$/i, "").trim();
     answer = answer.replace(/Источники:[\s\S]*$/i, "").trim();
-    // Remove [Информация X] (Страница Y) patterns
     answer = answer.replace(/\s*\[Информация\s+\d+\]\s*\(Страница\s+\d+\)/gi, "").trim();
     answer = answer.replace(/\s*\[Информация\s+\d+\]/gi, "").trim();
-    
-    // Parse ticket requirement from answer - try multiple formats
+
     let ticketMatch = answer.match(/\[TICKET_REQUIRED\]\s*CONFIDENCE:\s*([\d.]+)\s*NEEDS_TICKET:\s*(true|false)\s*REASON:\s*([\s\S]+?)(?=\n\n|\n$|$)/);
-    
-    // Alternative format: CONFIDENCE: X REASON: Y (without TICKET_REQUIRED block)
+
     if (!ticketMatch) {
       ticketMatch = answer.match(/CONFIDENCE:\s*([\d.]+)\s*REASON:\s*([\s\S]+?)(?=\n\n|\n$|$)/i);
       if (ticketMatch) {
-        // Convert to standard format: [confidence, "true", reason]
         ticketMatch = [ticketMatch[0], ticketMatch[1], "true", ticketMatch[2]];
       }
     }
-    
+
     let needsTicket = false;
     let confidence = 0.0;
     let ticketReason = "";
-    
+
     if (ticketMatch) {
       needsTicket = ticketMatch[2] === "true";
       confidence = parseFloat(ticketMatch[1]) || 0.0;
       ticketReason = ticketMatch[3]?.trim() || "";
-      
-      // Remove ticket block from answer
+
       answer = answer.replace(/\[TICKET_REQUIRED\][\s\S]*$/, "").trim();
       answer = answer.replace(/CONFIDENCE:\s*[\d.]+\s*REASON:\s*[^\n]+/gi, "").trim();
-      
-      // Check if this is a technical issue requiring intervention (equipment, technical problems)
+
       const fullTextForCheck = (message + " " + ticketReason + " " + conversationHistory.map((m: any) => m.content).join(" ")).toLowerCase();
       const isTechnicalIssue = /роутер|модем|оборудован|диагностик|техническ|не работает|сломал|поломк|замен|техническая проблема|помощь специалиста|требуется вмешательство|выезд|ремонт/i.test(fullTextForCheck);
-      
-      // Override: If we have chunks with similarity >= 20%, we should use them instead of creating ticket
-      // EXCEPT for technical issues requiring intervention - always create ticket for those
+
       if (needsTicket && maxSimilarity >= 0.2 && !isTechnicalIssue) {
-        // Don't create ticket if we have relevant information (unless it's a technical issue)
         needsTicket = false;
         confidence = Math.max(0.2, maxSimilarity);
-        // Remove ticket confirmation message if present
         answer = answer.replace(/\n\nХорошо, ваш запрос зарегистрирован\. Наши специалисты свяжутся с вами\./g, "").trim();
         answer = answer.replace(/Хорошо, ваш запрос зарегистрирован\. Наши специалисты свяжутся с вами\./g, "").trim();
         answer = answer.replace(/К сожалению, в предоставленных фрагментах документации нет информации/g, "").trim();
@@ -512,12 +468,10 @@ ${isCorporate ? "ТИП КЛИЕНТА: Корпоративный клиент\
         answer = answer.replace(/Я не могу предоставить вам точный ответ/g, "").trim();
         answer = answer.replace(/Я не могу предоставить вам точные шаги/g, "").trim();
       }
-      
-      // If ticket is needed, create it
+
       if (needsTicket) {
-        // Use clientType for ticket creation (corporate gets high priority)
         const { category, subcategory, department, priority } = categorizeTicket(message, conversationHistory, clientType);
-        
+
         try {
           console.log("Creating ticket with:", {
             userId,
@@ -530,7 +484,7 @@ ${isCorporate ? "ТИП КЛИЕНТА: Корпоративный клиент\
             contentLength: fullContent.length,
             ticketReason
           });
-          
+
           const ticket = await createTicket(
             userId,
             clientType,
@@ -542,32 +496,25 @@ ${isCorporate ? "ТИП КЛИЕНТА: Корпоративный клиент\
             confidence,
             fullContent
           );
-          
+
           console.log("Ticket created successfully:", ticket.id);
-          
-          // Update answer to confirm ticket creation
+
           if (!answer.includes("зарегистрирован")) {
             answer += "\n\nХорошо, ваш запрос зарегистрирован. Наши специалисты свяжутся с вами.";
           }
         } catch (error: any) {
           console.error("Failed to create ticket:", error);
           console.error("Error details:", JSON.stringify(error, null, 2));
-          // Continue with answer even if ticket creation fails
         }
       }
     } else {
-      // Calculate confidence based on similarity scores
-      // If we have chunks with similarity >= 20%, set confidence to at least 0.2
       if (maxSimilarity >= 0.2) {
-        // If any chunk has similarity >= 20%, we have information to use
         confidence = Math.max(0.2, maxSimilarity);
       } else {
-        // Only set low confidence if all chunks are below 20%
         confidence = maxSimilarity;
       }
     }
 
-    // Extract sources with metadata
     const sources = kazakhtelecomChunks.map((c: any) => ({
       content: c.content,
       page: c.metadata?.page,
@@ -580,15 +527,15 @@ ${isCorporate ? "ТИП КЛИЕНТА: Корпоративный клиент\
       sources: sources,
       confidence: confidence,
       ticketCreated: needsTicket
-    }), { 
-      status: 200, 
+    }), {
+      status: 200,
       headers: { "content-type": "application/json" }
     });
 
   } catch (err: any) {
     console.error("api/chat error:", err?.message || err);
-    return new Response(JSON.stringify({ 
-      error: err?.message || "Произошла ошибка при обработке запроса" 
+    return new Response(JSON.stringify({
+      error: err?.message || "Произошла ошибка при обработке запроса"
     }), {
       status: 500,
       headers: { "content-type": "application/json" }

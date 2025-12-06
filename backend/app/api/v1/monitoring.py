@@ -1,6 +1,3 @@
-"""
-Monitoring API endpoints
-"""
 from fastapi import APIRouter, HTTPException, Depends, Query
 from app.core.auth import require_role, get_current_user
 from app.core.database import get_supabase_admin
@@ -23,28 +20,24 @@ async def get_monitoring_metrics(
     to_date: Optional[str] = Query(None),
     user: Dict[str, Any] = Depends(require_role(["admin", "supervisor"]))
 ) -> MonitoringMetrics:
-    """Get comprehensive monitoring metrics"""
     supabase = get_supabase_admin()
-    
-    # Default to last 30 days
+
     if not from_date:
         from_date = (datetime.utcnow() - timedelta(days=30)).isoformat()
     if not to_date:
         to_date = datetime.utcnow().isoformat()
-    
-    # 1. Classification Accuracy
+
     feedback_result = supabase.table("classification_feedback")\
         .select("*")\
         .gte("feedback_at", from_date)\
         .lte("feedback_at", to_date)\
         .execute()
-    
+
     feedbacks = feedback_result.data if feedback_result.data else []
     total_classifications = len(feedbacks)
     correct_classifications = len([f for f in feedbacks if f.get("is_correct")])
     accuracy_percentage = (correct_classifications / total_classifications * 100) if total_classifications > 0 else 0.0
-    
-    # By category
+
     by_category = {}
     for feedback in feedbacks:
         cat = feedback.get("predicted_category", "unknown")
@@ -53,11 +46,10 @@ async def get_monitoring_metrics(
         by_category[cat]["total"] += 1
         if feedback.get("is_correct"):
             by_category[cat]["correct"] += 1
-    
+
     by_category_percent = {k: (v["correct"] / v["total"] * 100) if v["total"] > 0 else 0 
                           for k, v in by_category.items()}
-    
-    # By department
+
     by_department = {}
     for feedback in feedbacks:
         dept = feedback.get("predicted_department", "unknown")
@@ -66,59 +58,50 @@ async def get_monitoring_metrics(
         by_department[dept]["total"] += 1
         if feedback.get("is_correct"):
             by_department[dept]["correct"] += 1
-    
+
     by_department_percent = {k: (v["correct"] / v["total"] * 100) if v["total"] > 0 else 0 
                             for k, v in by_department.items()}
-    
-    # 2. Auto-resolve Stats
-    # ИСПРАВЛЕННАЯ ЛОГИКА: chat_interactions - это источник истины для всех запросов
-    
-    # 2.1. Получаем все взаимодействия (это все запросы пользователей)
+
+
     interactions_result = supabase.table("chat_interactions")\
         .select("*")\
         .gte("created_at", from_date)\
         .lte("created_at", to_date)\
         .execute()
-    
+
     interactions = interactions_result.data if interactions_result.data else []
-    total_requests = len(interactions)  # Все запросы = все взаимодействия
-    
-    # 2.2. Авторешения = взаимодействия где ticket_created = FALSE или NULL
+    total_requests = len(interactions)
+
     auto_resolved_interactions = [
         i for i in interactions 
         if not i.get("ticket_created") or i.get("ticket_created") is False
     ]
     total_auto_resolved = len(auto_resolved_interactions)
-    
-    # 2.3. Получаем созданные тикеты (для дополнительной статистики)
+
     tickets_result = supabase.table("tickets")\
         .select("*")\
         .gte("created_at", from_date)\
         .lte("created_at", to_date)\
         .execute()
-    
+
     tickets = tickets_result.data if tickets_result.data else []
     total_tickets_created = len(tickets)
-    
-    # 2.4. Общая метрика авторешений
+
     auto_resolve_rate = (total_auto_resolved / total_requests * 100) if total_requests > 0 else 0.0
-    
+
     print(f"[METRICS] Auto-resolve stats:")
     print(f"  - Total requests (interactions): {total_requests}")
     print(f"  - Auto-resolved (ticket_created=False): {total_auto_resolved}")
     print(f"  - Tickets created: {total_tickets_created}")
     print(f"  - Auto-resolve rate: {auto_resolve_rate:.2f}%")
-    
-    # Average confidence (только из chat_interactions, т.к. это источник истины)
+
     interaction_confidences = [i.get("confidence", 0) for i in auto_resolved_interactions if i.get("confidence")]
     avg_confidence = sum(interaction_confidences) / len(interaction_confidences) if interaction_confidences else 0.0
-    
-    # By category (только из chat_interactions)
+
     auto_by_category = {}
     for interaction in auto_resolved_interactions:
         cat = interaction.get("category")
         if not cat:
-            # Если категория не указана, пытаемся определить из сообщения
             message_lower = (interaction.get("message", "") or "").lower()
             if any(kw in message_lower for kw in ["тариф", "цена", "стоимость", "оплат", "биллинг"]):
                 cat = "billing"
@@ -132,40 +115,33 @@ async def get_monitoring_metrics(
                 cat = "equipment"
             else:
                 cat = "other"
-        
+
         auto_by_category[cat] = auto_by_category.get(cat, 0) + 1
-    
-    # 3. Response Time Stats
-    # 3.1. Время ответа из response_times (для тикетов)
+
     response_times_result = supabase.table("response_times")\
         .select("*")\
         .gte("first_response_at", from_date)\
         .lte("first_response_at", to_date)\
         .execute()
-    
+
     response_times = response_times_result.data if response_times_result.data else []
     ticket_response_times = [rt.get("response_time_seconds", 0) for rt in response_times if rt.get("response_time_seconds")]
-    
-    # 3.2. Время ответа из chat_interactions (для публичного чата)
-    # response_time_ms в chat_interactions, конвертируем в секунды
+
     chat_response_times = [
         i.get("response_time_ms", 0) / 1000.0 
         for i in interactions 
         if i.get("response_time_ms") is not None
     ]
-    
-    # 3.3. Объединяем все времена ответа
+
     all_response_times = ticket_response_times + chat_response_times
-    
+
     avg_response_time = sum(all_response_times) / len(all_response_times) if all_response_times else 0.0
     sorted_times = sorted(all_response_times) if all_response_times else []
     median_response_time = sorted_times[len(sorted_times) // 2] if sorted_times else 0.0
     p95_index = int(len(sorted_times) * 0.95) if sorted_times else 0
     p95_response_time = sorted_times[p95_index] if p95_index < len(sorted_times) else 0.0
-    
-    # By source
+
     by_source = {}
-    # Из response_times (тикеты)
     for rt in response_times:
         ticket_id = rt.get("ticket_id")
         ticket = next((t for t in tickets if t["id"] == ticket_id), None)
@@ -175,9 +151,7 @@ async def get_monitoring_metrics(
                 by_source[source] = []
             if rt.get("response_time_seconds"):
                 by_source[source].append(rt["response_time_seconds"])
-    
-    # Из chat_interactions (публичный чат)
-    # Все взаимодействия из публичного чата имеют source = "chat"
+
     chat_response_times_list = [
         interaction["response_time_ms"] / 1000.0 
         for interaction in interactions 
@@ -185,37 +159,32 @@ async def get_monitoring_metrics(
     ]
     if chat_response_times_list:
         by_source["chat"] = chat_response_times_list
-    
+
     by_source_avg = {k: sum(v) / len(v) if v else 0 for k, v in by_source.items()}
-    
-    # 4. Routing Errors
+
     routing_errors_result = supabase.table("routing_errors")\
         .select("*")\
         .gte("routed_at", from_date)\
         .lte("routed_at", to_date)\
         .execute()
-    
+
     routing_errors = routing_errors_result.data if routing_errors_result.data else []
     total_routing_errors = len(routing_errors)
-    # Ошибки маршрутизации считаем только для созданных тикетов
     error_rate = (total_routing_errors / total_tickets_created * 100) if total_tickets_created > 0 else 0.0
-    
-    # By error type
+
     by_error_type = {}
     for error in routing_errors:
         err_type = error.get("error_type", "unknown")
         by_error_type[err_type] = by_error_type.get(err_type, 0) + 1
-    
-    # By category (из тикетов с ошибками маршрутизации)
+
     by_category = {}
     for error in routing_errors:
         ticket_id = error.get("ticket_id")
-        # Найти тикет для получения категории
         ticket = next((t for t in tickets if t["id"] == ticket_id), None)
         if ticket:
             cat = ticket.get("category", "unknown")
             by_category[cat] = by_category.get(cat, 0) + 1
-    
+
     return MonitoringMetrics(
         classification_accuracy=ClassificationAccuracy(
             total_classifications=total_classifications,
@@ -226,7 +195,7 @@ async def get_monitoring_metrics(
         ),
         auto_resolve_stats=AutoResolveStats(
             total_auto_resolved=total_auto_resolved,
-            total_tickets=total_requests,  # Общее количество запросов (все взаимодействия)
+            total_tickets=total_requests,
             auto_resolve_rate=auto_resolve_rate,
             avg_confidence=avg_confidence,
             by_category=auto_by_category
@@ -236,14 +205,14 @@ async def get_monitoring_metrics(
             median_response_time_seconds=median_response_time,
             p95_response_time_seconds=p95_response_time,
             by_source=by_source_avg,
-            by_department={}  # Можно добавить по департаментам
+            by_department={}
         ),
         routing_error_stats=RoutingErrorStats(
             total_routing_errors=total_routing_errors,
             error_rate=error_rate,
             by_error_type=by_error_type,
-            by_department={},  # Можно добавить по департаментам
-            by_category=by_category  # Ошибки маршрутизации по категориям
+            by_department={},
+            by_category=by_category
         ),
         period_from=datetime.fromisoformat(from_date.replace('Z', '+00:00')),
         period_to=datetime.fromisoformat(to_date.replace('Z', '+00:00'))

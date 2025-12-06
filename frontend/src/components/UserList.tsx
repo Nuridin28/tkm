@@ -34,7 +34,7 @@ export default function UserList() {
 
     setDeletingUserId(userId)
     setError('')
-    
+
     try {
       await deleteUserMutation.mutateAsync(userId)
     } catch (err: any) {

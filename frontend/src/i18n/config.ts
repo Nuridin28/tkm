@@ -10,7 +10,7 @@ i18n
       ru: { translation: ruTranslations },
       kz: { translation: kzTranslations },
     },
-    lng: 'ru', // default language
+    lng: 'ru',
     fallbackLng: 'ru',
     interpolation: {
       escapeValue: false,

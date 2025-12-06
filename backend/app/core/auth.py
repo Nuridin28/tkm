@@ -1,6 +1,3 @@
-"""
-Authentication and authorization utilities
-"""
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from supabase import Client
@@ -14,10 +11,8 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     supabase: Client = Depends(get_supabase)
 ) -> dict:
-    """Get current authenticated user"""
     try:
         token = credentials.credentials
-        # Verify token with Supabase
         user = supabase.auth.get_user(token)
         if not user:
             raise HTTPException(
@@ -34,9 +29,7 @@ async def get_current_user(
 
 
 async def get_user_role_from_db(user_id: str, supabase: Client) -> Optional[str]:
-    """Get user role from public.users table"""
     try:
-        # Используем admin client для обхода RLS, если доступен
         from app.core.database import get_supabase_admin
         try:
             admin_client = get_supabase_admin()
@@ -47,8 +40,7 @@ async def get_user_role_from_db(user_id: str, supabase: Client) -> Optional[str]
                 return role
         except Exception as admin_error:
             print(f"Admin client not available, trying regular client: {admin_error}")
-        
-        # Fallback: используем обычный client (может не работать из-за RLS)
+
         result = supabase.table("users").select("role").eq("id", user_id).single().execute()
         if result.data:
             role = result.data.get("role")
@@ -62,7 +54,6 @@ async def get_user_role_from_db(user_id: str, supabase: Client) -> Optional[str]
 
 
 def require_role(allowed_roles: list[str]):
-    """Decorator to require specific roles - checks role from public.users table"""
     async def role_checker(
         user: dict = Depends(get_current_user),
         supabase: Client = Depends(get_supabase)
@@ -73,26 +64,24 @@ def require_role(allowed_roles: list[str]):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User ID not found"
             )
-        
-        # Загрузить роль из public.users (как на фронтенде)
+
         user_role = await get_user_role_from_db(user_id, supabase)
-        
-        # Fallback на user_metadata если роль не найдена в БД
+
         if not user_role:
             user_role = user.get("role") or user.get("user_metadata", {}).get("role")
-        
+
         if not user_role:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="User role not found"
             )
-        
+
         if user_role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Required roles: {allowed_roles}, but user has: {user_role}"
             )
-        
+
         return user
     return role_checker
 

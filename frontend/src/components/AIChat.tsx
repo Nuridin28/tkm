@@ -4,27 +4,23 @@ import { Phone, Mail, CheckCircle } from 'lucide-react'
 import { sendChatMessage, createTicketFromChat } from '../services/api'
 import '../styles/AIChat.css'
 
-// Простая функция для форматирования Markdown в HTML
 function formatMarkdown(text: string): string {
   if (!text) return ''
-  
-  // Удаляем технические метаданные
+
   text = text.replace(/CONFIDENCE:\s*[\d.]+\s*/gi, '')
   text = text.replace(/NEEDS_TICKET:\s*(true|false)\s*/gi, '')
   text = text.replace(/REASON:\s*[^\n]*/gi, '')
   text = text.trim()
-  
-  // Разбиваем на строки
+
   const lines = text.split('\n')
   const result: string[] = []
   let inOrderedList = false
   let inUnorderedList = false
   let inParagraph = false
-  
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim()
-    
-    // Пропускаем пустые строки
+
     if (!line) {
       if (inOrderedList) {
         result.push('</ol>')
@@ -40,8 +36,7 @@ function formatMarkdown(text: string): string {
       }
       continue
     }
-    
-    // Заголовки
+
     if (line.startsWith('## ')) {
       if (inParagraph) result.push('</p>')
       if (inOrderedList) { result.push('</ol>'); inOrderedList = false }
@@ -58,8 +53,7 @@ function formatMarkdown(text: string): string {
       inParagraph = false
       continue
     }
-    
-    // Нумерованные списки
+
     const numberedMatch = line.match(/^(\d+)\.\s+(.+)$/)
     if (numberedMatch) {
       if (inParagraph) { result.push('</p>'); inParagraph = false }
@@ -69,15 +63,13 @@ function formatMarkdown(text: string): string {
         inOrderedList = true
       }
       let content = numberedMatch[2]
-      // Обрабатываем форматирование внутри списка
       content = content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       content = content.replace(/\*(.+?)\*/g, '<em>$1</em>')
       content = content.replace(/`(.+?)`/g, '<code>$1</code>')
       result.push(`<li>${content}</li>`)
       continue
     }
-    
-    // Маркированные списки
+
     const bulletMatch = line.match(/^[-*]\s+(.+)$/)
     if (bulletMatch) {
       if (inParagraph) { result.push('</p>'); inParagraph = false }
@@ -87,38 +79,34 @@ function formatMarkdown(text: string): string {
         inUnorderedList = true
       }
       let content = bulletMatch[1]
-      // Обрабатываем форматирование внутри списка
       content = content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       content = content.replace(/\*(.+?)\*/g, '<em>$1</em>')
       content = content.replace(/`(.+?)`/g, '<code>$1</code>')
       result.push(`<li>${content}</li>`)
       continue
     }
-    
-    // Обычный текст
+
     if (inOrderedList) { result.push('</ol>'); inOrderedList = false }
     if (inUnorderedList) { result.push('</ul>'); inUnorderedList = false }
-    
+
     if (!inParagraph) {
       result.push('<p>')
       inParagraph = true
     } else {
       result.push('<br>')
     }
-    
-    // Обрабатываем форматирование
+
     let content = line
     content = content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     content = content.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
     content = content.replace(/`(.+?)`/g, '<code>$1</code>')
     result.push(content)
   }
-  
-  // Закрываем открытые теги
+
   if (inParagraph) result.push('</p>')
   if (inOrderedList) result.push('</ol>')
   if (inUnorderedList) result.push('</ul>')
-  
+
   return result.join('')
 }
 
@@ -143,8 +131,7 @@ interface AIChatProps {
 
 export default function AIChat({ contactInfo }: AIChatProps) {
   const { t } = useTranslation()
-  
-  // Загружаем историю из localStorage при монтировании
+
   const loadHistory = (): Message[] => {
     const saved = localStorage.getItem(`chat_history_${contactInfo.phone}`)
     if (saved) {
@@ -169,11 +156,9 @@ export default function AIChat({ contactInfo }: AIChatProps) {
   const [ticketCreated, setTicketCreated] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Обновляем приветственное сообщение при смене языка
   useEffect(() => {
     const saved = localStorage.getItem(`chat_history_${contactInfo.phone}`)
     if (!saved && messages.length === 1 && messages[0].role === 'assistant') {
-      // Если только приветственное сообщение, обновляем его при смене языка
       setMessages([{
         role: 'assistant',
         content: t('support.greeting'),
@@ -182,7 +167,6 @@ export default function AIChat({ contactInfo }: AIChatProps) {
     }
   }, [t, contactInfo.phone])
 
-  // Сохраняем историю в localStorage при изменении
   useEffect(() => {
     if (messages.length > 0) {
       localStorage.setItem(`chat_history_${contactInfo.phone}`, JSON.stringify(messages))
@@ -211,7 +195,6 @@ export default function AIChat({ contactInfo }: AIChatProps) {
     setLoading(true)
 
     try {
-      // Отправляем сообщение в API
       const response = await sendChatMessage({
         message: userMessage.content,
         conversation_history: messages.map(msg => ({
@@ -222,7 +205,6 @@ export default function AIChat({ contactInfo }: AIChatProps) {
         contact_info: contactInfo
       })
 
-      // Используем answer если есть, иначе response
       const answerText = response.answer || response.response || ''
 
       const assistantMessage: Message = {
@@ -234,15 +216,12 @@ export default function AIChat({ contactInfo }: AIChatProps) {
 
       setMessages(prev => [...prev, assistantMessage])
 
-      // Если тикет уже создан (ticketCreated из ответа)
       if (response.ticketCreated && !ticketCreated) {
         setTicketCreated(true)
       }
 
-      // Если нужно создать тикет (старый формат для совместимости)
       if (response.should_create_ticket && response.ticket_draft && !ticketCreated) {
         try {
-          // Добавляем всю историю чата в драфт тикета
           const fullHistory = [...messages, userMessage, assistantMessage]
           const ticketDraftWithHistory = {
             ...response.ticket_draft,
@@ -252,16 +231,16 @@ export default function AIChat({ contactInfo }: AIChatProps) {
               timestamp: msg.timestamp || new Date().toISOString()
             }))
           }
-          
+
           await createTicketFromChat(ticketDraftWithHistory)
           setTicketCreated(true)
-          
+
           const ticketMessage: Message = {
             role: 'assistant',
             content: t('support.ticketSent'),
             timestamp: new Date().toISOString()
           }
-          
+
           setTimeout(() => {
             setMessages(prev => [...prev, ticketMessage])
           }, 1000)
@@ -306,7 +285,7 @@ export default function AIChat({ contactInfo }: AIChatProps) {
             key={index}
             className={`message ${message.role === 'user' ? 'user-message' : 'assistant-message'}`}
           >
-            <div 
+            <div
               className="message-content"
               dangerouslySetInnerHTML={{
                 __html: formatMarkdown(message.content)

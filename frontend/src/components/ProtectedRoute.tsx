@@ -20,12 +20,10 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
   if (allowedRoles && userProfile) {
     const userRole = userProfile.role
     if (!allowedRoles.includes(userRole)) {
-      // Redirect to dashboard which will redirect based on role
       return <Navigate to="/dashboard" replace />
     }
   }
 
-  // If profile not loaded yet but user exists, wait a bit
   if (!userProfile && user) {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Загрузка профиля...</div>
   }

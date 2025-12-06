@@ -76,8 +76,8 @@ export default function PublicSupport() {
             />
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="start-chat-button"
             style={{ color: 'white', background: 'linear-gradient(135deg, #0066CC 0%, #00A651 100%)' }}
           >

@@ -11,11 +11,9 @@ export default function DepartmentDashboard() {
   const navigate = useNavigate()
   const { t } = useTranslation()
 
-  // Фильтруем тикеты по department_id пользователя
-  // Инженеры видят только тикеты своего департамента
   const { data: tickets = [], isLoading: loading, refetch: refetchTickets, error: ticketsError } = useTickets({
     department_id: userProfile?.department_id,
-    status: 'in_progress' // Показываем только тикеты в работе
+    status: 'in_progress'
   })
 
   const loadTickets = () => {
@@ -81,7 +79,7 @@ export default function DepartmentDashboard() {
               {t('dashboard.refresh')}
             </button>
           </div>
-          
+
           {ticketsError ? (
             <div className="bg-red-50 border border-red-200 rounded-xl shadow-sm p-12 text-center">
               <FileText className="w-16 h-16 text-red-400 mx-auto mb-4" />

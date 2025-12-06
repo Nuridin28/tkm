@@ -10,7 +10,7 @@ interface TicketCardProps {
 
 export default function TicketCard({ ticket, onClick }: TicketCardProps) {
   const { t } = useTranslation()
-  
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'critical':
@@ -68,7 +68,7 @@ export default function TicketCard({ ticket, onClick }: TicketCardProps) {
   }
 
   return (
-    <div 
+    <div
       className={`${getPriorityColor(ticket.priority)} bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer border-l-4 h-full flex flex-col`}
       onClick={onClick}
     >
@@ -86,11 +86,11 @@ export default function TicketCard({ ticket, onClick }: TicketCardProps) {
           {t(`tickets.${ticket.status}`, ticket.status)}
         </span>
       </div>
-      
+
       <h3 className="text-gray-900 font-semibold text-lg mb-2 line-clamp-2 flex-grow">
         {ticket.subject}
       </h3>
-      
+
       {(ticket.category || ticket.subcategory) && (
         <div className="flex items-center gap-2 mb-2 flex-wrap">
           {ticket.category && (
@@ -105,11 +105,11 @@ export default function TicketCard({ ticket, onClick }: TicketCardProps) {
           )}
         </div>
       )}
-      
+
       <p className="text-gray-600 text-sm mb-4 line-clamp-2 flex-grow">
         {ticket.description.slice(0, 100)}...
       </p>
-      
+
       <div className="flex justify-between items-center mt-auto pt-2 border-t border-gray-200">
         <div className="flex items-center gap-1 text-xs text-gray-500">
           <Clock className="w-3 h-3" />

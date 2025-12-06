@@ -40,7 +40,6 @@ export default function AutoResolvedTickets() {
 
   useEffect(() => {
     loadTickets()
-    // Автообновление каждые 30 секунд
     const interval = setInterval(loadTickets, 30000)
     return () => clearInterval(interval)
   }, [])

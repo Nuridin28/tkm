@@ -1,12 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { 
-  getDepartments, 
-  createDepartment, 
-  updateDepartment, 
-  deleteDepartment 
+import {
+  getDepartments,
+  createDepartment,
+  updateDepartment,
+  deleteDepartment
 } from '../services/api'
 
-// Query keys
 export const departmentKeys = {
   all: ['departments'] as const,
   lists: () => [...departmentKeys.all, 'list'] as const,
@@ -14,22 +13,20 @@ export const departmentKeys = {
   detail: (id: string) => [...departmentKeys.details(), id] as const,
 }
 
-// Get all departments
 export function useDepartments() {
   return useQuery({
     queryKey: departmentKeys.lists(),
     queryFn: getDepartments,
-    staleTime: 5 * 60 * 1000, // 5 минут - департаменты редко меняются
-    gcTime: 10 * 60 * 1000, // 10 минут в кэше
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   })
 }
 
-// Create department mutation
 export function useCreateDepartment() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: createDepartment,
     onSuccess: () => {
@@ -38,10 +35,9 @@ export function useCreateDepartment() {
   })
 }
 
-// Update department mutation
 export function useUpdateDepartment() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: ({ departmentId, data }: { departmentId: string; data: any }) =>
       updateDepartment(departmentId, data),
@@ -52,10 +48,9 @@ export function useUpdateDepartment() {
   })
 }
 
-// Delete department mutation
 export function useDeleteDepartment() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: deleteDepartment,
     onSuccess: () => {

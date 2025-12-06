@@ -11,7 +11,6 @@ const api = axios.create({
   baseURL: API_BASE_URL,
 })
 
-// Add auth token to requests
 api.interceptors.request.use(async (config) => {
   const { data: { session } } = await supabase.auth.getSession()
   if (session?.access_token) {
@@ -20,18 +19,14 @@ api.interceptors.request.use(async (config) => {
   return config
 })
 
-// Add response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
-      // Server responded with error
       console.error('API Error:', error.response.status, error.response.data)
     } else if (error.request) {
-      // Request made but no response
       console.error('API Error: No response from server', error.request)
     } else {
-      // Something else happened
       console.error('API Error:', error.message)
     }
     return Promise.reject(error)
@@ -158,7 +153,6 @@ export const deleteUser = async (userId: string) => {
   return response.data
 }
 
-// Public chat API (без авторизации)
 const publicApi = axios.create({
   baseURL: API_BASE_URL,
 })
@@ -177,7 +171,6 @@ export const createTicketFromChat = async (ticketDraft: any) => {
   return response.data
 }
 
-// Bot Management API
 export const getBots = async () => {
   const response = await api.get('/api/admin/bots')
   return response.data
@@ -203,29 +196,25 @@ export const restartBot = async (botType: string) => {
   return response.data
 }
 
-// Monitoring API
 export const getMonitoringMetrics = async (fromDate?: string, toDate?: string) => {
   const params = new URLSearchParams()
   if (fromDate) params.append('from_date', fromDate)
   if (toDate) params.append('to_date', toDate)
-  
+
   const response = await api.get(`/api/admin/monitoring/metrics?${params.toString()}`)
   return response.data
 }
 
-// Ticket AI Recommendations
 export const getAIRecommendations = async (ticketId: string) => {
   const response = await api.get(`/api/tickets/${ticketId}/ai-recommendations`)
   return response.data
 }
 
-// Chat History
 export const getChatHistory = async (ticketId: string) => {
   const response = await api.get(`/api/tickets/${ticketId}/chat-history`)
   return response.data
 }
 
-// Classification Feedback
 export const submitClassificationFeedback = async (ticketId: string, feedback: {
   is_correct?: boolean
   category?: string
