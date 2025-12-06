@@ -50,31 +50,44 @@
 
 ## Быстрый старт
 
-Подробные инструкции по развертыванию см. в [DEPLOYMENT.md](./DEPLOYMENT.md)
+Подробные инструкции по развертыванию см. в [DEPLOYMENT.md](./DEPLOYMENT.md) и [QUICKSTART.md](./QUICKSTART.md)
 
-### Краткая версия:
+### Самый быстрый способ:
 
-1. **Настройте Supabase**:
-   - Создайте проект
-   - Выполните миграции из `supabase/migrations/`
-
-2. **Настройте Backend**:
+1. **Настройте Supabase** (см. [QUICKSTART.md](./QUICKSTART.md))
+2. **Настройте .env файлы** для backend, frontend и ботов
+3. **Запустите всё одной командой**:
    ```bash
-   cd backend
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   # Создайте .env файл с настройками
-   uvicorn main:app --reload
+   ./start_all.sh
    ```
 
-3. **Настройте Frontend**:
-   ```bash
-   cd frontend
-   npm install
-   # Создайте .env файл с настройками
-   npm run dev
-   ```
+Этот скрипт запустит:
+- ✅ Backend (FastAPI) на http://localhost:8000
+- ✅ Frontend (React) на http://localhost:5173
+- ✅ Telegram Bot (если настроен)
+- ✅ WhatsApp Bot (если настроен)
+
+**Опции запуска:**
+```bash
+./start_all.sh --no-bots      # Только backend и frontend
+./start_all.sh --no-frontend  # Backend и боты
+./start_all.sh --no-backend   # Если backend уже запущен отдельно
+```
+
+### Ручной запуск:
+
+**Backend:**
+```bash
+cd backend
+source venv/bin/activate
+uvicorn main:app --reload
+```
+
+**Frontend:**
+```bash
+cd frontend
+npm run dev
+```
 
 ## API Endpoints
 

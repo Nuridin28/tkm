@@ -3,8 +3,11 @@ Telegram Bot for Help Desk
 """
 import logging
 import re
+import os
+import psutil
 from typing import Dict, Optional
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
+from telegram.error import Conflict
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -252,19 +255,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         message_text = update.message.text.strip()
         
-        # Build conversation history from session
-        conversation_history = session.conversation_history or []
-        
-        # Add current message to history
-        conversation_history.append({
-            "role": "user",
-            "content": message_text
-        })
+        # Build conversation history from session (БЕЗ текущего сообщения)
+        # Текущее сообщение будет добавлено в историю только после получения ответа
+        conversation_history = (session.conversation_history or []).copy()
         
         # Show typing indicator
         await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
         
         # Analyze message with RAG
+        # Передаем историю БЕЗ текущего сообщения - backend сам добавит его при обработке
         contact_info = session.contact_info.model_dump() if session.contact_info else {}
         analysis = await api_client.analyze_message(
             message_text,
@@ -277,15 +276,41 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ticket_created = analysis.get("ticketCreated", False)
         answer = analysis.get("response") or analysis.get("answer")
         ticket_draft = analysis.get("ticket_draft")
+        updated_history = analysis.get("conversation_history")
         
         # Сохраняем ticket_draft в сессии для возможного создания тикета
         if ticket_draft:
             session.ticket_draft = ticket_draft
         
+        # Используем обновленную историю из ответа backend, если она есть
+        # Это предотвращает дублирование сообщений
+        if updated_history:
+            # Конвертируем формат из backend в формат бота
+            session.conversation_history = [
+                {
+                    "role": msg.get("role", "user"),
+                    "content": msg.get("content", "")
+                }
+                for msg in updated_history
+            ]
+        else:
+            # Fallback: добавляем текущее сообщение и ответ вручную
+            conversation_history.append({
+                "role": "user",
+                "content": message_text
+            })
+            if answer:
+                conversation_history.append({
+                    "role": "assistant",
+                    "content": answer
+                })
+            session.conversation_history = conversation_history
+        
         if ticket_created:
             # Тикет уже создан автоматически
             ticket_id = analysis.get("ticket_draft", {}).get("ticket_id") if ticket_draft else None
             if answer:
+                
                 try:
                     await update.message.reply_text(
                         f"{answer}\n\n✅ Тикет создан автоматически. Мы свяжемся с вами в ближайшее время.",
@@ -304,6 +329,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.info(f"✅ Ticket auto-created for user {user.id}")
         elif can_answer and answer:
             # We can answer - send the answer
+            # Добавляем ответ ассистента в историю
             conversation_history.append({
                 "role": "assistant",
                 "content": answer
@@ -379,7 +405,16 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle errors that occur during update processing"""
-    logger.error(f"Exception while handling an update: {context.error}", exc_info=context.error)
+    error = context.error
+    
+    # Обработка конфликта - несколько экземпляров бота
+    if isinstance(error, Conflict) or (isinstance(error, Exception) and "Conflict" in str(error) and "getUpdates" in str(error)):
+        logger.warning(f"Conflict detected - another bot instance may be running: {error}")
+        logger.warning("This instance will attempt to reconnect. Make sure only one bot instance is running.")
+        # Не логируем как ошибку, так как это ожидаемое поведение при конфликте
+        return
+    
+    logger.error(f"Exception while handling an update: {error}", exc_info=error)
     
     # Try to send error message to user if update is available
     if isinstance(update, Update) and update.effective_message:
@@ -391,9 +426,53 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
             pass
 
 
+def check_existing_instance():
+    """Проверить, не запущен ли уже другой экземпляр бота"""
+    current_pid = os.getpid()
+    script_name = os.path.basename(__file__)
+    
+    # Ищем процессы с тем же скриптом
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+        try:
+            if proc.info['pid'] == current_pid:
+                continue  # Пропускаем текущий процесс
+            
+            cmdline = proc.info.get('cmdline', [])
+            if cmdline and any(script_name in str(arg) for arg in cmdline):
+                # Найден другой процесс с тем же скриптом
+                old_pid = proc.info['pid']
+                logger.warning(f"Found existing bot instance with PID {old_pid}. Terminating...")
+                try:
+                    proc.terminate()
+                    proc.wait(timeout=5)
+                    logger.info(f"Successfully terminated old instance (PID: {old_pid})")
+                except psutil.TimeoutExpired:
+                    proc.kill()
+                    logger.info(f"Force killed old instance (PID: {old_pid})")
+                except psutil.NoSuchProcess:
+                    logger.info(f"Old instance already terminated (PID: {old_pid})")
+                except Exception as e:
+                    logger.error(f"Error terminating old instance: {e}")
+                # Даем время на завершение
+                import time
+                time.sleep(2)
+                break
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+        except Exception as e:
+            logger.debug(f"Error checking process {proc.info.get('pid')}: {e}")
+
+
 def main():
     """Start the bot"""
     try:
+        # Проверяем, не запущен ли уже другой экземпляр
+        try:
+            check_existing_instance()
+        except Exception as e:
+            logger.warning(f"Could not check for existing instances: {e}")
+            # Продолжаем запуск, так как это не критично
+        
         # Create application
         application = Application.builder().token(settings.TELEGRAM_BOT_TOKEN).build()
         

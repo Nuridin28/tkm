@@ -77,7 +77,8 @@ class APIClient:
                     "subject": message[:50] + "..." if len(message) > 50 else message,
                     "confidence": result.get("confidence", 0.0),
                     "ticketCreated": result.get("ticketCreated", False),
-                    "ticket_draft": result.get("ticket_draft")
+                    "ticket_draft": result.get("ticket_draft"),
+                    "conversation_history": result.get("conversation_history", [])  # Возвращаем обновленную историю
                 }
         except Exception as e:
             print(f"Error analyzing message: {e}")

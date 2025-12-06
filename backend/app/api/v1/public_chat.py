@@ -5,49 +5,15 @@ Public Chat API - для публичного обращения клиенто�
 from fastapi import APIRouter, HTTPException
 from app.models.schemas import PublicChatRequest, PublicChatResponse, PublicChatMessage, SourceInfo
 from app.services.ticket_service import ticket_service
+from app.services.ai_service import get_openai_client
 from app.core.database import get_supabase_admin
 from app.core.config import settings
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 import json
 import re
-from openai import OpenAI
 
 router = APIRouter()
-
-# Инициализация OpenAI клиента
-_openai_client = None
-
-def get_openai_client():
-    """Get OpenAI client instance"""
-    global _openai_client
-    if _openai_client is None:
-        # Получаем API ключ из настроек
-        api_key = str(settings.OPENAI_API_KEY).strip()
-        
-        # Валидация API ключа
-        if not api_key:
-            raise ValueError("OPENAI_API_KEY is not set in environment variables")
-        
-        if not api_key.startswith('sk-'):
-            raise ValueError(f"Invalid OpenAI API key format. Key should start with 'sk-'. Got: {api_key[:10]}...")
-        
-        if len(api_key) < 20:
-            raise ValueError(f"OpenAI API key seems too short. Expected at least 20 characters, got {len(api_key)}")
-        
-        # Проверяем, что ключ содержит только ASCII символы (но не удаляем их!)
-        try:
-            api_key.encode('ascii')
-        except UnicodeEncodeError as e:
-            # Если есть не-ASCII символы, это проблема - не удаляем их, а сообщаем об ошибке
-            raise ValueError(f"OpenAI API key contains non-ASCII characters. Please check your .env file. Error: {e}")
-        
-        _openai_client = OpenAI(
-            api_key=api_key,
-            timeout=60.0,
-            max_retries=3
-        )
-    return _openai_client
 
 
 async def embed_query(query: str) -> List[float]:
@@ -184,14 +150,15 @@ async def create_ticket_from_chat(
     department: str,
     priority: str,
     confidence: float,
-    content: str
+    content: str,
+    subject: Optional[str] = None
 ) -> Dict[str, Any]:
     """Создать тикет из чата"""
     from app.models.schemas import TicketSource
     
     ticket_data = {
         "source": TicketSource.CHAT.value,
-        "subject": content[:100] + ("..." if len(content) > 100 else ""),
+        "subject": subject if subject else content[:100] + ("..." if len(content) > 100 else ""),
         "text": content,
         "incoming_meta": {
             "user_id": user_id,
@@ -371,8 +338,13 @@ async def public_chat(request: PublicChatRequest) -> PublicChatResponse:
         # 5) Формируем сообщения с историей
         messages = [{"role": "system", "content": system_prompt}]
         
-        # Добавляем последние 10 сообщений из истории
+        # Добавляем последние 10 сообщений из истории (БЕЗ текущего сообщения)
+        # Проверяем, не является ли последнее сообщение текущим запросом
         recent_history = conversation_history[-10:]
+        # Если последнее сообщение в истории - это текущий запрос (по содержанию), не добавляем его
+        if recent_history and recent_history[-1].get("content") == message and recent_history[-1].get("role") == "user":
+            recent_history = recent_history[:-1]  # Убираем дубликат текущего сообщения
+        
         for msg in recent_history:
             messages.append({"role": msg["role"], "content": msg["content"]})
         
@@ -451,48 +423,63 @@ async def public_chat(request: PublicChatRequest) -> PublicChatResponse:
                 confidence = max_similarity
             print(f"[TICKET LOGIC] No explicit ticket request, max_similarity: {max_similarity}, confidence: {confidence}")
         
-        # Проверяем, нужно ли создавать тикет
-        full_text_for_check = (message + " " + ticket_reason + " " + " ".join([m.get("content", "") for m in conversation_history])).lower()
+        # Проверяем, может ли модель ответить (есть релевантная информация и хороший ответ)
+        can_answer = max_similarity >= 0.2 and len(answer.strip()) > 20
+        
+        # Проверяем технические проблемы ТОЛЬКО в текущем сообщении и ticket_reason
+        # НЕ включаем историю, чтобы избежать ложных срабатываний на обычные вопросы
+        current_text_for_check = (message + " " + ticket_reason).lower()
+        
+        # Более точное определение технических проблем - только реальные проблемы, требующие вмешательства
+        # Исключаем общие слова типа "проблем" и "вопрос", которые могут быть в информационных запросах
         is_technical_issue = bool(re.search(
-            r"роутер|модем|оборудован|диагностик|техническ|не работает|сломал|поломк|замен|техническая проблема|помощь специалиста|требуется вмешательство|выезд|ремонт",
-            full_text_for_check
+            r"(роутер|модем|оборудован|устройств).*(не работает|сломал|поломк|замен|не включается|не запускается)|"
+            r"(не работает|не включается|не запускается).*(роутер|модем|оборудован|устройств)|"
+            r"(сломал|поломк|замен).*(роутер|модем|оборудован|устройств)|"
+            r"техническая проблема|помощь специалиста|требуется вмешательство|требуется ремонт|"
+            r"выезд.*специалист|ремонт.*оборудован|диагностик.*оборудован|"
+            r"не могу.*подключ|не получается.*подключ|не удается.*подключ|"
+            r"(ошибк|неправильно).*(оборудован|устройств|роутер|модем)",
+            current_text_for_check
         ))
         
-        print(f"[TICKET LOGIC] max_similarity: {max_similarity}, is_technical_issue: {is_technical_issue}, ai_explicitly_requested: {ai_explicitly_requested_ticket}")
+        print(f"[TICKET LOGIC] max_similarity: {max_similarity}, is_technical_issue: {is_technical_issue}, ai_explicitly_requested: {ai_explicitly_requested_ticket}, can_answer: {can_answer}")
+        print(f"[TICKET LOGIC] Current message: {message[:100]}...")
         
-        # Определяем, нужно ли создавать тикет:
-        # 1. AI явно запросил тикет
-        # 2. Нет релевантной информации (similarity < 0.2)
-        # 3. Техническая проблема, требующая вмешательства
-        if not needs_ticket:
-            # Если AI не запросил явно, проверяем другие условия
-            if max_similarity < 0.2:
-                # Нет релевантной информации - создаем тикет
-                needs_ticket = True
-                print(f"[TICKET LOGIC] Setting needs_ticket=True because no relevant information (similarity < 0.2)")
-            elif is_technical_issue:
-                # Техническая проблема - создаем тикет
-                needs_ticket = True
-                print(f"[TICKET LOGIC] Setting needs_ticket=True because it's a technical issue")
+        # Упрощенная логика определения необходимости создания тикета:
+        # 1. AI явно запросил тикет - ВСЕГДА создаем (приоритет #1)
+        # 2. Техническая проблема И модель НЕ может ответить - создаем тикет
+        # 3. Нет релевантной информации (similarity < 0.2) - создаем тикет
+        # 4. Если модель МОЖЕТ ответить - НЕ создаем тикет (авторешение), даже если есть технические слова
         
-        # Если нужно создать тикет, проверяем, не нужно ли его отменить
-        if needs_ticket:
-            # Если AI явно запросил тикет, всегда создаем (даже если есть релевантная информация)
-            if ai_explicitly_requested_ticket:
-                print(f"[TICKET LOGIC] Creating ticket because AI explicitly requested it")
-                # Не отменяем создание тикета
-            elif is_technical_issue:
-                # Техническая проблема - всегда создаем тикет
-                print(f"[TICKET LOGIC] Creating ticket because it's a technical issue")
-            elif max_similarity < 0.2:
-                # Нет релевантной информации - создаем тикет
-                print(f"[TICKET LOGIC] Creating ticket because no relevant information (similarity < 0.2)")
-            else:
-                # Есть релевантная информация и это не техническая проблема - не создаем тикет
-                print(f"[TICKET LOGIC] NOT creating ticket - have relevant info and not technical issue")
-                needs_ticket = False
-                confidence = max(0.2, max_similarity)
-                answer = re.sub(r"Хорошо, ваш запрос зарегистрирован\. Наши специалисты свяжутся с вами\.", "", answer).strip()
+        # Если AI явно запросил тикет - ВСЕГДА создаем
+        if ai_explicitly_requested_ticket:
+            needs_ticket = True
+            print(f"[TICKET LOGIC] Creating ticket because AI explicitly requested it (priority 1)")
+        # Если модель может ответить - НЕ создаем тикет (авторешение)
+        # Это приоритетнее, чем технические проблемы, так как если можем ответить - значит это информационный запрос
+        elif can_answer:
+            needs_ticket = False
+            print(f"[TICKET LOGIC] NOT creating ticket - model can answer (AUTO-RESOLVED)")
+            confidence = max(0.2, max_similarity)
+            answer = re.sub(r"Хорошо, ваш запрос зарегистрирован\. Наши специалисты свяжутся с вами\.", "", answer).strip()
+            
+            # Добавляем благодарственное сообщение для авторешенных тикетов
+            if answer and not any(phrase in answer.lower() for phrase in ["спасибо", "надеюсь", "решили"]):
+                answer += "\n\nСпасибо, что обратились! Надеюсь, информация помогла решить вашу проблему. Если у вас возникнут дополнительные вопросы, обращайтесь — мы всегда готовы помочь."
+        # Если техническая проблема И модель НЕ может ответить - создаем тикет
+        elif is_technical_issue and not can_answer:
+            needs_ticket = True
+            print(f"[TICKET LOGIC] Creating ticket because it's a technical issue and model can't answer")
+        # Если нет релевантной информации - создаем тикет
+        elif max_similarity < 0.2:
+            needs_ticket = True
+            print(f"[TICKET LOGIC] Creating ticket because no relevant information (similarity < 0.2)")
+        # В остальных случаях - НЕ создаем тикет (если можем ответить, значит это информационный запрос)
+        else:
+            needs_ticket = False
+            print(f"[TICKET LOGIC] NOT creating ticket - can answer or informational query (AUTO-RESOLVED)")
+            confidence = max(0.2, max_similarity)
         
         # Создаем тикет если нужно
         ticket_id_value = None
@@ -502,13 +489,19 @@ async def public_chat(request: PublicChatRequest) -> PublicChatResponse:
             print(f"[TICKET CREATION] Starting ticket creation process...")
             categorization = categorize_ticket(message, conversation_history, client_type)
             
-            conversation_text = "\n".join([
-                f"{'Пользователь' if m['role'] == 'user' else 'Ассистент'}: {m['content']}"
-                for m in conversation_history
-            ])
-            full_content = f"{conversation_text}\nПользователь: {message}"
+            # Генерируем краткое описание через LLM вместо полной истории
+            from app.services.ai_service import ai_service
+            try:
+                ticket_description = await ai_service.generate_ticket_summary(conversation_history, message)
+                ticket_subject = message[:100] + ("..." if len(message) > 100 else "")
+            except Exception as e:
+                print(f"[TICKET CREATION] Error generating summary, using fallback: {e}")
+                # Fallback: используем только последнее сообщение
+                ticket_description = message
+                ticket_subject = message[:100] + ("..." if len(message) > 100 else "")
             
             print(f"[TICKET CREATION] Ticket data: user_id={user_id}, client_type={client_type}, category={categorization['category']}, department={categorization['department']}, priority={categorization['priority']}")
+            print(f"[TICKET CREATION] Generated description: {ticket_description[:100]}...")
             
             try:
                 ticket_result = await create_ticket_from_chat(
@@ -520,14 +513,16 @@ async def public_chat(request: PublicChatRequest) -> PublicChatResponse:
                     department=categorization["department"],
                     priority=categorization["priority"],
                     confidence=confidence,
-                    content=full_content
+                    content=ticket_description,
+                    subject=ticket_subject
                 )
                 
                 ticket_id_value = ticket_result.get("id")
                 print(f"[TICKET CREATION] Ticket created successfully: {ticket_id_value}")
                 
-                if "зарегистрирован" not in answer:
-                    answer += "\n\nХорошо, ваш запрос зарегистрирован. Наши специалисты свяжутся с вами."
+                # Добавляем сообщение о создании тикета только если тикет действительно создан
+                if ticket_id_value and "зарегистрирован" not in answer.lower() and "тикет" not in answer.lower():
+                    answer += "\n\n✅ Ваш запрос зарегистрирован как тикет. Наши специалисты свяжутся с вами в ближайшее время."
             except Exception as e:
                 print(f"[TICKET CREATION] ERROR creating ticket: {e}")
                 import traceback
@@ -598,10 +593,13 @@ async def public_chat(request: PublicChatRequest) -> PublicChatResponse:
             # Не прерываем выполнение, если не удалось сохранить
         
         # Всегда возвращаем ответ, независимо от успешности сохранения в БД
+        # Определяем can_answer: модель может ответить если есть релевантная информация и не создается тикет
+        final_can_answer = (max_similarity >= 0.2 and len(answer.strip()) > 20) and not needs_ticket
+        
         return PublicChatResponse(
             response=answer,
             answer=answer,
-            can_answer=confidence >= 0.2,
+            can_answer=final_can_answer,
             needs_clarification=False,
             should_create_ticket=needs_ticket,
             sources=sources,
@@ -626,13 +624,32 @@ async def create_ticket_from_chat_endpoint(ticket_draft: Dict[str, Any]) -> Dict
         conversation_history = ticket_draft.get("conversation_history", [])
         description = ticket_draft.get("description", "")
         
+        # Генерируем краткое описание через LLM вместо полной истории
         if conversation_history:
-            history_text = "\n\n=== История чата ===\n"
-            for msg in conversation_history:
-                role_name = "Клиент" if msg.get("role") == "user" else "ИИ-ассистент"
-                content = msg.get("content", "")
-                history_text += f"\n[{role_name}]: {content}\n"
-            description = description + history_text
+            from app.services.ai_service import ai_service
+            try:
+                # Находим последнее сообщение пользователя
+                last_user_message = ""
+                for msg in reversed(conversation_history):
+                    if msg.get("role") == "user":
+                        last_user_message = msg.get("content", "")
+                        break
+                
+                if last_user_message:
+                    # Генерируем краткое описание
+                    generated_description = await ai_service.generate_ticket_summary(conversation_history, last_user_message)
+                    description = generated_description
+                    print(f"[CREATE_TICKET] Generated description: {description[:100]}...")
+            except Exception as e:
+                print(f"[CREATE_TICKET] Error generating description, using fallback: {e}")
+                # Fallback: используем только последнее сообщение пользователя
+                last_user_message = ""
+                for msg in reversed(conversation_history):
+                    if msg.get("role") == "user":
+                        last_user_message = msg.get("content", "")
+                        break
+                if last_user_message:
+                    description = last_user_message
         
         ticket_data = {
             "source": TicketSource.CHAT.value,

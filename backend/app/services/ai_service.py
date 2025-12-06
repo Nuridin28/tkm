@@ -101,6 +101,54 @@ class AIService:
                 "confidence": 0.0
             }
     
+    async def generate_ticket_summary(self, conversation_history: List[Dict[str, Any]], user_message: str) -> str:
+        """Генерирует краткое описание проблемы из истории разговора"""
+        try:
+            # Формируем контекст из истории
+            history_text = ""
+            for msg in conversation_history[-5:]:  # Берем последние 5 сообщений
+                role = msg.get("role", "user")
+                content = msg.get("content", "")
+                if role == "user":
+                    history_text += f"Клиент: {content}\n"
+            
+            history_text += f"Клиент: {user_message}\n"
+            
+            system_prompt = """Ты — помощник для создания краткого описания проблемы клиента для тикета техподдержки.
+
+На основе истории разговора с клиентом создай краткое, но информативное описание проблемы:
+- Укажи суть проблемы (что не работает, что нужно)
+- Укажи важные детали (если есть)
+- НЕ включай ответы ассистента, только проблему клиента
+- Длина: 2-4 предложения
+- Пиши от лица клиента или в нейтральном тоне
+
+Примеры:
+"Клиент не может зарегистрироваться в личном кабинете. Нужна помощь с получением регистрационных кодов."
+"У клиента не работает интернет. Требуется диагностика проблемы."
+"Клиент хочет узнать, как приостановить услуги связи на время."
+
+Отвечай ТОЛЬКО описанием проблемы, без дополнительных комментариев."""
+            
+            client = get_openai_client()
+            response = client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": history_text}
+                ],
+                temperature=0.3,
+                max_tokens=200
+            )
+            
+            summary = response.choices[0].message.content.strip()
+            return summary
+            
+        except Exception as e:
+            print(f"Error generating ticket summary: {e}")
+            # Fallback: используем последнее сообщение пользователя
+            return user_message[:200] + ("..." if len(user_message) > 200 else "")
+    
     async def retrieve_kb(self, query: str, k: int = 5) -> List[Dict[str, Any]]:
         """Retrieve relevant KB articles using RAG"""
         supabase = get_supabase()

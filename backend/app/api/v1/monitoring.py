@@ -71,20 +71,9 @@ async def get_monitoring_metrics(
                             for k, v in by_department.items()}
     
     # 2. Auto-resolve Stats
-    # 2.1. Авторешения из тикетов (старая логика)
-    tickets_result = supabase.table("tickets")\
-        .select("*")\
-        .gte("created_at", from_date)\
-        .lte("created_at", to_date)\
-        .execute()
+    # ИСПРАВЛЕННАЯ ЛОГИКА: chat_interactions - это источник истины для всех запросов
     
-    tickets = tickets_result.data if tickets_result.data else []
-    total_tickets = len(tickets)
-    auto_resolved_tickets = [t for t in tickets if t.get("auto_resolved")]
-    total_auto_resolved_tickets = len(auto_resolved_tickets)
-    
-    # 2.2. Авторешения из chat_interactions (публичный чат)
-    # Авторешение = когда ticket_created = FALSE (ИИ ответил без создания тикета)
+    # 2.1. Получаем все взаимодействия (это все запросы пользователей)
     interactions_result = supabase.table("chat_interactions")\
         .select("*")\
         .gte("created_at", from_date)\
@@ -92,35 +81,40 @@ async def get_monitoring_metrics(
         .execute()
     
     interactions = interactions_result.data if interactions_result.data else []
-    total_interactions = len(interactions)
-    auto_resolved_interactions = [i for i in interactions if not i.get("ticket_created")]
-    total_auto_resolved_interactions = len(auto_resolved_interactions)
+    total_requests = len(interactions)  # Все запросы = все взаимодействия
     
-    # 2.3. Общая метрика авторешений
-    total_auto_resolved = total_auto_resolved_tickets + total_auto_resolved_interactions
-    total_requests = total_tickets + total_interactions
+    # 2.2. Авторешения = взаимодействия где ticket_created = FALSE или NULL
+    auto_resolved_interactions = [
+        i for i in interactions 
+        if not i.get("ticket_created") or i.get("ticket_created") is False
+    ]
+    total_auto_resolved = len(auto_resolved_interactions)
+    
+    # 2.3. Получаем созданные тикеты (для дополнительной статистики)
+    tickets_result = supabase.table("tickets")\
+        .select("*")\
+        .gte("created_at", from_date)\
+        .lte("created_at", to_date)\
+        .execute()
+    
+    tickets = tickets_result.data if tickets_result.data else []
+    total_tickets_created = len(tickets)
+    
+    # 2.4. Общая метрика авторешений
     auto_resolve_rate = (total_auto_resolved / total_requests * 100) if total_requests > 0 else 0.0
     
     print(f"[METRICS] Auto-resolve stats:")
-    print(f"  - Tickets: {total_tickets} total, {total_auto_resolved_tickets} auto-resolved")
-    print(f"  - Interactions: {total_interactions} total, {total_auto_resolved_interactions} auto-resolved")
-    print(f"  - Overall: {total_requests} total, {total_auto_resolved} auto-resolved ({auto_resolve_rate:.2f}%)")
+    print(f"  - Total requests (interactions): {total_requests}")
+    print(f"  - Auto-resolved (ticket_created=False): {total_auto_resolved}")
+    print(f"  - Tickets created: {total_tickets_created}")
+    print(f"  - Auto-resolve rate: {auto_resolve_rate:.2f}%")
     
-    # Average confidence (из обоих источников)
-    ticket_confidences = [t.get("classification_confidence", 0) for t in auto_resolved_tickets if t.get("classification_confidence")]
+    # Average confidence (только из chat_interactions, т.к. это источник истины)
     interaction_confidences = [i.get("confidence", 0) for i in auto_resolved_interactions if i.get("confidence")]
-    all_confidences = ticket_confidences + interaction_confidences
-    avg_confidence = sum(all_confidences) / len(all_confidences) if all_confidences else 0.0
+    avg_confidence = sum(interaction_confidences) / len(interaction_confidences) if interaction_confidences else 0.0
     
-    # By category (из обоих источников)
+    # By category (только из chat_interactions)
     auto_by_category = {}
-    for ticket in auto_resolved_tickets:
-        cat = ticket.get("category", "unknown")
-        if cat:
-            auto_by_category[cat] = auto_by_category.get(cat, 0) + 1
-    
-    # Для авторешений из chat_interactions категория может быть None
-    # Используем категорию из сообщения или определяем по содержимому
     for interaction in auto_resolved_interactions:
         cat = interaction.get("category")
         if not cat:
@@ -203,8 +197,8 @@ async def get_monitoring_metrics(
     
     routing_errors = routing_errors_result.data if routing_errors_result.data else []
     total_routing_errors = len(routing_errors)
-    # Ошибки маршрутизации считаем только для тикетов (не для chat_interactions)
-    error_rate = (total_routing_errors / total_tickets * 100) if total_tickets > 0 else 0.0
+    # Ошибки маршрутизации считаем только для созданных тикетов
+    error_rate = (total_routing_errors / total_tickets_created * 100) if total_tickets_created > 0 else 0.0
     
     # By error type
     by_error_type = {}
@@ -232,7 +226,7 @@ async def get_monitoring_metrics(
         ),
         auto_resolve_stats=AutoResolveStats(
             total_auto_resolved=total_auto_resolved,
-            total_tickets=total_requests,  # Общее количество запросов (тикеты + взаимодействия)
+            total_tickets=total_requests,  # Общее количество запросов (все взаимодействия)
             auto_resolve_rate=auto_resolve_rate,
             avg_confidence=avg_confidence,
             by_category=auto_by_category
