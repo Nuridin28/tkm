@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from 'react-i18next'
 import { LogIn, Mail, Lock } from 'lucide-react'
+import Logo from '../components/Logo'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -26,10 +27,13 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-cyan-50 to-green-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-blue-50 p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent mb-2">
+          <div className="flex justify-center mb-4">
+            <Logo height={64} />
+          </div>
+          <h1 className="text-3xl font-bold text-[#0066CC] mb-2">
             ИИ Help Desk
           </h1>
           <p className="text-gray-600">{t('auth.login')}</p>
@@ -76,7 +80,7 @@ export default function Login() {
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-blue-600 to-green-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-green-700 transition-all duration-200 flex items-center justify-center gap-2"
+            className="w-full bg-[#0066CC] text-white py-3 rounded-lg font-semibold hover:bg-[#0052A3] transition-all duration-200 flex items-center justify-center gap-2"
           >
             <LogIn className="w-5 h-5" />
             {t('auth.signIn')}

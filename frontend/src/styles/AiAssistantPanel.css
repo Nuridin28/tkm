@@ -174,12 +174,12 @@
 }
 
 .btn-approve {
-  background: linear-gradient(135deg, #00A651 0%, #008A42 100%);
+  background: #0066CC;
   color: white;
 }
 
 .btn-approve:hover:not(:disabled) {
-  background: linear-gradient(135deg, #008A42 0%, #006B33 100%);
+  background: #0052A3;
 }
 
 .btn-change {
@@ -192,12 +192,12 @@
 }
 
 .btn-save {
-  background: linear-gradient(135deg, #0066CC 0%, #0052A3 100%);
+  background: #0066CC;
   color: white;
 }
 
 .btn-save:hover:not(:disabled) {
-  background: linear-gradient(135deg, #0052A3 0%, #003d7a 100%);
+  background: #0052A3;
 }
 
 .btn-cancel {

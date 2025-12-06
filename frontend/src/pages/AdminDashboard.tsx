@@ -16,6 +16,7 @@ import { LogOut, User, Ticket, Building, Settings, Plus, RefreshCw, Bot, BarChar
 import BotManager from '../components/BotManager'
 import MonitoringPanel from '../components/MonitoringPanel'
 import AutoResolvedTickets from '../components/AutoResolvedTickets'
+import Logo from '../components/Logo'
 import '../styles/AdminDashboard.css'
 
 export default function AdminDashboard() {
@@ -42,7 +43,7 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-cyan-50 to-green-50">
+      <div className="min-h-screen flex items-center justify-center bg-blue-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <div className="text-gray-700 font-medium">{t('common.loading')}</div>
@@ -52,12 +53,15 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-green-50">
+    <div className="min-h-screen bg-blue-50">
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
           <div className="flex justify-between items-center h-16 min-h-[4rem]">
             <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 flex-1 min-w-0">
-              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent whitespace-nowrap">
+              <div className="hidden sm:block">
+                <Logo height={40} />
+              </div>
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-[#0066CC] whitespace-nowrap">
                 {t('admin.title')}
               </h1>
               <nav className="flex gap-0.5 sm:gap-1 overflow-x-auto scrollbar-hide flex-1 min-w-0">
@@ -92,7 +96,7 @@ export default function AdminDashboard() {
               </div>
               <button
                 onClick={() => setShowRegister(true)}
-                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 lg:px-4 py-2 bg-gradient-to-r from-blue-600 to-green-600 text-white rounded-lg text-xs sm:text-sm font-medium hover:from-blue-700 hover:to-green-700 transition-colors whitespace-nowrap"
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 lg:px-4 py-2 bg-[#0066CC] text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-[#0052A3] transition-colors whitespace-nowrap"
                 title={t('users.addUser')}
               >
                 <Plus className="w-3 h-3 sm:w-4 sm:h-4" />

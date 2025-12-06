@@ -1,6 +1,6 @@
 .dashboard {
   min-height: 100vh;
-  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%);
+  background: #0066CC;
   background-attachment: fixed;
 }
 
@@ -25,10 +25,7 @@
   margin: 0;
   font-size: 1.75rem;
   font-weight: 700;
-  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #0066CC;
 }
 
 .dashboard-nav {
@@ -54,7 +51,7 @@
 }
 
 .dashboard-nav button.active {
-  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%);
+  background: #0066CC;
   color: white;
 }
 
@@ -75,7 +72,7 @@
 
 .btn-primary {
   padding: 0.625rem 1.25rem;
-  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%);
+  background: #0066CC;
   color: white;
   border: none;
   border-radius: 8px;

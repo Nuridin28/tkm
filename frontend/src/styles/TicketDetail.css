@@ -14,7 +14,7 @@
 
 .ticket-header button {
   padding: 0.5rem 1rem;
-  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%);
+  background: #0066CC;
   color: white;
   border: none;
   border-radius: 4px;
@@ -90,7 +90,7 @@
 
 .ticket-actions button {
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%);
+  background: #0066CC;
   color: white;
   border: none;
   border-radius: 4px;
@@ -102,7 +102,7 @@
 }
 
 .ticket-actions button:hover {
-  background: linear-gradient(135deg, #0052A3 0%, #008A42 100%);
+  background: #0052A3;
 }
 
 .btn-chat-history {

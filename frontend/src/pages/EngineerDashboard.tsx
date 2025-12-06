@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { getTickets } from '../services/api'
 import TicketCard from '../components/TicketCard'
+import Logo from '../components/Logo'
 import '../styles/Dashboard.css'
 
 export default function EngineerDashboard() {
@@ -42,7 +43,10 @@ export default function EngineerDashboard() {
   return (
     <div className="dashboard">
       <header className="dashboard-header">
-        <h1>Панель инженера</h1>
+        <div className="header-left">
+          <Logo height={32} className="mb-2" />
+          <h1>Панель инженера</h1>
+        </div>
         <div className="header-actions">
           <span>{userProfile?.name || user?.email}</span>
           <button className="btn-logout" onClick={handleLogout}>Выйти</button>

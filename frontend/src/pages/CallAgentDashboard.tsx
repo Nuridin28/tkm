@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { ingestTicket } from '../services/api'
+import Logo from '../components/Logo'
 import '../styles/Dashboard.css'
 
 export default function CallAgentDashboard() {
@@ -49,7 +50,10 @@ export default function CallAgentDashboard() {
   return (
     <div className="dashboard">
       <header className="dashboard-header">
-        <h1>Панель оператора колл-центра</h1>
+        <div className="header-left">
+          <Logo height={32} className="mb-2" />
+          <h1>Панель оператора колл-центра</h1>
+        </div>
         <div className="header-actions">
           <span>{userProfile?.name || user?.email}</span>
           <button className="btn-logout" onClick={handleLogout}>Выйти</button>

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import TicketCard from '../components/TicketCard'
 import { LogOut, RefreshCw, FileText, User } from 'lucide-react'
 import LanguageSwitcher from '../components/LanguageSwitcher'
+import Logo from '../components/Logo'
 
 export default function DepartmentDashboard() {
   const { user, userProfile, signOut } = useAuth()
@@ -27,7 +28,7 @@ export default function DepartmentDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-cyan-50 to-green-50">
+      <div className="min-h-screen flex items-center justify-center bg-blue-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <div className="text-gray-700 font-medium">{t('common.loading')}</div>
@@ -37,17 +38,20 @@ export default function DepartmentDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-green-50">
+    <div className="min-h-screen bg-blue-50">
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{t('dashboard.departmentTickets')}</h1>
-              {userProfile?.department_id && (
-                <p className="text-sm text-gray-500 mt-1">
-                  Показываются только тикеты вашего департамента
-                </p>
-              )}
+            <div className="flex items-center gap-4">
+              <Logo height={40} />
+              <div>
+                <h1 className="text-2xl font-bold text-[#0066CC]">{t('dashboard.departmentTickets')}</h1>
+                {userProfile?.department_id && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Показываются только тикеты вашего департамента
+                  </p>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <LanguageSwitcher />

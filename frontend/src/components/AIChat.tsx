@@ -341,7 +341,7 @@ export default function AIChat({ contactInfo }: AIChatProps) {
           type="submit"
           disabled={loading || !inputMessage.trim() || ticketCreated}
           className="send-button"
-          style={{ color: 'white', background: 'linear-gradient(135deg, #0066CC 0%, #00A651 100%)' }}
+          style={{ color: 'white', background: '#0066CC' }}
         >
           {t('support.send')}
         </button>

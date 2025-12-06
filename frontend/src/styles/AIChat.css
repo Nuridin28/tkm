@@ -10,7 +10,7 @@
 }
 
 .chat-header {
-  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%);
+  background: #0066CC;
   color: white;
   padding: 1rem 1.5rem;
   display: flex;
@@ -126,7 +126,7 @@
 }
 
 .user-message .message-content {
-  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%);
+  background: #0066CC;
   color: white;
   border-bottom-right-radius: 4px;
 }
@@ -235,7 +235,7 @@
 
 .send-button {
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%) !important;
+  background: #0066CC !important;
   color: white !important;
   border: none;
   border-radius: 8px;
@@ -247,14 +247,14 @@
 
 .send-button:hover:not(:disabled) {
   transform: translateY(-1px);
-  background: linear-gradient(135deg, #0052A3 0%, #008A42 100%) !important;
+  background: #0052A3 !important;
   color: white !important;
 }
 
 .send-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%) !important;
+  background: #0066CC !important;
   color: white !important;
 }
 

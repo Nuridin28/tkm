@@ -183,12 +183,12 @@
 }
 
 .restart-button {
-  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%);
+  background: #0066CC;
   color: white;
 }
 
 .restart-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #0052A3 0%, #008A42 100%);
+  background: #0052A3;
 }
 
 .action-button:disabled {

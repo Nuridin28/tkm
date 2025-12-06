@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Bot, MessageCircle, Ticket, Clock } from 'lucide-react'
 import AIChat from '../components/AIChat'
 import LanguageSwitcher from '../components/LanguageSwitcher'
+import Logo from '../components/Logo'
 import '../styles/PublicSupport.css'
 
 export default function PublicSupport() {
@@ -48,6 +49,9 @@ export default function PublicSupport() {
           <LanguageSwitcher />
         </div>
         <div className="support-header">
+          <div className="flex justify-center mb-6">
+            <Logo height={80} />
+          </div>
           <h1>{t('support.title')}</h1>
           <p>{t('support.subtitle')}</p>
         </div>
@@ -79,7 +83,7 @@ export default function PublicSupport() {
           <button
             type="submit"
             className="start-chat-button"
-            style={{ color: 'white', background: 'linear-gradient(135deg, #0066CC 0%, #00A651 100%)' }}
+            style={{ color: 'white', background: '#0066CC' }}
           >
             {t('support.startChat')}
           </button>

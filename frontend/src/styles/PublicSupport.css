@@ -1,6 +1,6 @@
 .public-support {
   min-height: 100vh;
-  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%);
+  background: #0066CC;
   background-attachment: fixed;
   padding: 2rem;
   display: flex;
@@ -82,7 +82,7 @@
 .start-chat-button {
   width: 100%;
   padding: 1rem;
-  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%) !important;
+  background: #0066CC !important;
   color: white !important;
   border: none;
   border-radius: 8px;
@@ -95,13 +95,13 @@
 .start-chat-button:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 20px rgba(0, 102, 204, 0.4);
-  background: linear-gradient(135deg, #0052A3 0%, #008A42 100%) !important;
+  background: #0052A3 !important;
   color: white !important;
 }
 
 .start-chat-button:active {
   transform: translateY(0);
-  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%) !important;
+  background: #0066CC !important;
   color: white !important;
 }
 
@@ -140,7 +140,7 @@
 }
 
 .back-button {
-  background: linear-gradient(135deg, #0066CC 0%, #00A651 100%);
+  background: #0066CC;
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -155,7 +155,7 @@
 }
 
 .back-button:hover {
-  background: linear-gradient(135deg, #0052A3 0%, #008A42 100%);
+  background: #0052A3;
 }
 
 .header-actions {
