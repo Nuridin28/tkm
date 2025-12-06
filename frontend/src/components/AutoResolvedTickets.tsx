@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
 import { getAutoResolvedTickets } from '../services/api'
 import { Zap, MessageSquare, Clock, TrendingUp, User } from 'lucide-react'
 import { format } from 'date-fns'
@@ -33,7 +32,6 @@ interface AutoResolvedTicket {
 }
 
 export default function AutoResolvedTickets() {
-  const { t } = useTranslation()
   const [tickets, setTickets] = useState<AutoResolvedTicket[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)

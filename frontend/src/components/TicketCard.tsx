@@ -83,7 +83,7 @@ export default function TicketCard({ ticket, onClick }: TicketCardProps) {
           )}
         </div>
         <span className={`px-2 py-1 rounded text-xs font-medium uppercase ${getStatusColor(ticket.status)}`}>
-          {t(`tickets.${ticket.status}`, ticket.status)}
+          {String(t(`tickets.${ticket.status}`, ticket.status))}
         </span>
       </div>
 

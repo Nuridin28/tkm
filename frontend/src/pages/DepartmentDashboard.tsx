@@ -98,7 +98,7 @@ export default function DepartmentDashboard() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {tickets.map((ticket) => (
+              {tickets.map((ticket: any) => (
                 <TicketCard
                   key={ticket.id}
                   ticket={ticket}

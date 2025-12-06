@@ -41,7 +41,7 @@ export default function RegisterUser({ onClose, onSuccess }: RegisterUserProps) 
     setError('')
 
     try {
-      const userData = await createUserMutation.mutateAsync({
+      await createUserMutation.mutateAsync({
         email: formData.email,
         password: formData.password,
         name: formData.name,

@@ -38,7 +38,7 @@ export default function AiAssistantPanel({ ticket, onClassificationUpdate }: AiA
   const handleApproveClassification = async () => {
     setSubmitting(true)
     try {
-      const result = await submitClassificationFeedback(ticket.id, {
+      await submitClassificationFeedback(ticket.id, {
         is_correct: true,
         category: ticket.category,
         department_id: ticket.department_id,

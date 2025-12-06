@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { MessageCircle, Phone, Mail, Globe, User, History, X } from 'lucide-react'
-import { getTicket, updateTicket, acceptTicket, completeRemote, getChatHistory } from '../services/api'
+import { getTicket, acceptTicket, completeRemote, getChatHistory } from '../services/api'
 import TicketTimeline from '../components/TicketTimeline'
 import AiAssistantPanel from '../components/AiAssistantPanel'
 import SLAClock from '../components/SLAClock'
@@ -118,8 +118,8 @@ export default function TicketDetail() {
           <div className="ticket-info">
             <SLAClock ticket={ticket} />
             <div className="ticket-meta">
-              <span>{t('tickets.status')}: {t(`tickets.${ticket.status}`, ticket.status)}</span>
-              <span>{t('tickets.priority')}: {t(`tickets.${ticket.priority}`, ticket.priority)}</span>
+              <span>{t('tickets.status')}: {String(t(`tickets.${ticket.status}`, ticket.status))}</span>
+              <span>{t('tickets.priority')}: {String(t(`tickets.${ticket.priority}`, ticket.priority))}</span>
               {ticket.category && (
                 <span>
                   {t('tickets.category', 'Категория')}: {ticket.category}
