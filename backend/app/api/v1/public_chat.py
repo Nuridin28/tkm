@@ -651,9 +651,13 @@ async def create_ticket_from_chat_endpoint(ticket_draft: Dict[str, Any]) -> Dict
                 if last_user_message:
                     description = last_user_message
         
+        # Определяем источник: если есть email_address в contact_info, то EMAIL, иначе CHAT
+        contact_info = ticket_draft.get("contact_info", {})
+        source = TicketSource.EMAIL.value if contact_info.get("email_address") else TicketSource.CHAT.value
+        
         ticket_data = {
-            "source": TicketSource.CHAT.value,
-            "subject": ticket_draft.get("subject", "Обращение через чат"),
+            "source": source,
+            "subject": ticket_draft.get("subject", "Обращение через чат" if source == TicketSource.CHAT.value else "Обращение по email"),
             "text": description,
             "incoming_meta": {
                 "language": ticket_draft.get("language", "ru"),
@@ -663,7 +667,7 @@ async def create_ticket_from_chat_endpoint(ticket_draft: Dict[str, Any]) -> Dict
                 "priority": ticket_draft.get("priority", "medium"),
                 "summary": ticket_draft.get("summary", ""),
                 "conversation_history": conversation_history,
-                **ticket_draft.get("contact_info", {})
+                **contact_info
             }
         }
         

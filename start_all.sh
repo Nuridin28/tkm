@@ -45,6 +45,7 @@ BACKEND_PID=""
 FRONTEND_PID=""
 TELEGRAM_BOT_PID=""
 WHATSAPP_BOT_PID=""
+EMAIL_BOT_PID=""
 
 # Функция для очистки процессов при выходе
 cleanup() {
@@ -53,6 +54,7 @@ cleanup() {
     [ ! -z "$FRONTEND_PID" ] && kill $FRONTEND_PID 2>/dev/null
     [ ! -z "$TELEGRAM_BOT_PID" ] && kill $TELEGRAM_BOT_PID 2>/dev/null
     [ ! -z "$WHATSAPP_BOT_PID" ] && kill $WHATSAPP_BOT_PID 2>/dev/null
+    [ ! -z "$EMAIL_BOT_PID" ] && kill $EMAIL_BOT_PID 2>/dev/null
     echo -e "${GREEN}✓ Все процессы остановлены${NC}"
     exit 0
 }
@@ -244,6 +246,52 @@ if [ "$NO_BOTS" = false ] && [ -d "whatsapp_bot" ]; then
 fi
 
 # ============================================
+# 5. EMAIL BOT
+# ============================================
+if [ "$NO_BOTS" = false ] && [ -d "email_bot" ]; then
+    echo -e "${BLUE}📧 Запуск Email Bot...${NC}"
+    
+    # Проверяем и останавливаем старые процессы бота
+    OLD_BOT_PIDS=$(ps aux | grep "[p]ython3.*bot.py" | grep email_bot | grep -v grep | awk '{print $2}')
+    if [ ! -z "$OLD_BOT_PIDS" ]; then
+        echo -e "${YELLOW}⚠ Найдены запущенные экземпляры бота. Останавливаю...${NC}"
+        for pid in $OLD_BOT_PIDS; do
+            kill $pid 2>/dev/null && echo -e "${GREEN}  → Остановлен процесс PID: $pid${NC}"
+        done
+        sleep 2
+    fi
+    
+    if [ ! -d "email_bot/venv" ]; then
+        echo -e "${YELLOW}⚠ Виртуальное окружение не найдено. Создаю...${NC}"
+        cd email_bot
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install -r requirements.txt
+        cd ..
+    fi
+    
+    cd email_bot
+    source venv/bin/activate
+    
+    # Проверка .env файла
+    if [ ! -f ".env" ]; then
+        echo -e "${YELLOW}⚠ Файл .env не найден!${NC}"
+        echo -e "${YELLOW}  Создайте файл email_bot/.env с EMAIL_USERNAME и EMAIL_PASSWORD${NC}"
+    fi
+    
+    python3 bot.py > ../email_bot.log 2>&1 &
+    EMAIL_BOT_PID=$!
+    cd ..
+    
+    sleep 2
+    if ps -p $EMAIL_BOT_PID > /dev/null; then
+        echo -e "${GREEN}✓ Email Bot запущен (PID: $EMAIL_BOT_PID)${NC}\n"
+    else
+        echo -e "${YELLOW}⚠ Возможна ошибка запуска Email Bot. Проверьте email_bot.log${NC}\n"
+    fi
+fi
+
+# ============================================
 # Итоговая информация
 # ============================================
 echo -e "${CYAN}"
@@ -258,12 +306,14 @@ echo -e "${GREEN}📍 Доступные сервисы:${NC}"
 [ "$NO_FRONTEND" = false ] && echo -e "  ${GREEN}•${NC} Frontend:        ${CYAN}http://localhost:5173${NC}"
 [ "$NO_BOTS" = false ] && [ ! -z "$TELEGRAM_BOT_PID" ] && echo -e "  ${GREEN}•${NC} Telegram Bot:    ${CYAN}Запущен${NC}"
 [ "$NO_BOTS" = false ] && [ ! -z "$WHATSAPP_BOT_PID" ] && echo -e "  ${GREEN}•${NC} WhatsApp Bot:    ${CYAN}Запущен${NC}"
+[ "$NO_BOTS" = false ] && [ ! -z "$EMAIL_BOT_PID" ] && echo -e "  ${GREEN}•${NC} Email Bot:       ${CYAN}Запущен${NC}"
 
 echo -e "\n${YELLOW}📋 Логи:${NC}"
 [ "$NO_BACKEND" = false ] && echo -e "  • Backend:        ${CYAN}tail -f backend.log${NC}"
 [ "$NO_FRONTEND" = false ] && echo -e "  • Frontend:       ${CYAN}tail -f frontend.log${NC}"
 [ "$NO_BOTS" = false ] && [ ! -z "$TELEGRAM_BOT_PID" ] && echo -e "  • Telegram Bot:   ${CYAN}tail -f telegram_bot.log${NC}"
 [ "$NO_BOTS" = false ] && [ ! -z "$WHATSAPP_BOT_PID" ] && echo -e "  • WhatsApp Bot:   ${CYAN}tail -f whatsapp_bot.log${NC}"
+[ "$NO_BOTS" = false ] && [ ! -z "$EMAIL_BOT_PID" ] && echo -e "  • Email Bot:      ${CYAN}tail -f email_bot.log${NC}"
 
 echo -e "\n${YELLOW}⏹  Для остановки нажмите Ctrl+C${NC}\n"
 

@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# Запуск Email бота
+
+# Проверка наличия .env файла
+if [ ! -f .env ]; then
+    echo "❌ Файл .env не найден!"
+    echo "Скопируйте .env.example в .env и заполните необходимые переменные"
+    exit 1
+fi
+
+# Проверка обязательных переменных
+if ! grep -q "EMAIL_USERNAME=" .env || grep -q "EMAIL_USERNAME=your-email" .env; then
+    echo "❌ EMAIL_USERNAME не настроен в .env"
+    exit 1
+fi
+
+if ! grep -q "EMAIL_PASSWORD=" .env || grep -q "EMAIL_PASSWORD=your-app-password" .env; then
+    echo "❌ EMAIL_PASSWORD не настроен в .env"
+    exit 1
+fi
+
+# Проверяем и останавливаем старые процессы бота
+OLD_BOT_PIDS=$(ps aux | grep "[p]ython3.*bot.py" | grep -v grep | awk '{print $2}')
+if [ ! -z "$OLD_BOT_PIDS" ]; then
+    echo "⚠ Найдены запущенные экземпляры бота. Останавливаю..."
+    for pid in $OLD_BOT_PIDS; do
+        kill $pid 2>/dev/null && echo "  → Остановлен процесс PID: $pid"
+    done
+    sleep 2
+fi
+
+# Также проверяем процессы через PID файл (если используется)
+PID_FILE="/tmp/telecom_bots/email.pid"
+if [ -f "$PID_FILE" ]; then
+    OLD_PID=$(cat "$PID_FILE" 2>/dev/null)
+    if [ ! -z "$OLD_PID" ] && ps -p $OLD_PID > /dev/null 2>&1; then
+        echo "⚠ Найден процесс по PID файлу. Останавливаю..."
+        kill $OLD_PID 2>/dev/null
+        rm -f "$PID_FILE"
+        sleep 2
+    fi
+fi
+
+echo "🚀 Запуск Email бота..."
+
+# Активируем виртуальное окружение если оно существует
+if [ -d "venv" ]; then
+    echo "📦 Активация виртуального окружения..."
+    source venv/bin/activate
+else
+    echo "📦 Создание виртуального окружения..."
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install -r requirements.txt
+fi
+
+python3 bot.py
+
